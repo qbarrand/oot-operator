@@ -131,21 +131,28 @@ jobs:
         env:
           KUSTOMIZE_CONFIG_DEFAULT: ci/install-ci
 
-      - name: Check that the ooto_ci module is not loaded on the node
+      - name: Check that the ooto_ci_a module is not loaded on the node
         run: |
-          if minikube ssh -- lsmod | grep ooto_ci; then
+          if minikube ssh -- lsmod | grep ooto_ci_a; then
             echo "Unexpected lsmod output - the module should not be loaded"
             exit 1
           fi
 
+      - name: Label the node
+        run: kubectl label node minikube wants-oot-module=ooto_ci_a
+
       - name: Add an ooto-ci Module that contains a mapping for $KERNEL_VERSION
         run: |
-          sed "s/KVER_CHANGEME/${KERNEL_VERSION}/g" ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
+          sed -e s/NAME_CHANGEME/ooto-ci/g \
+            -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
+            -e s/KMOD_CHANGEME/ooto_ci_a/ \
+            ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
+
           kubectl apply -f module-ooto-ci.yaml
 
       - name: Check that the module gets loaded on the node
         run: |
-          until minikube ssh -- lsmod | grep ooto_ci; do
+          until minikube ssh -- lsmod | grep ooto_ci_a; do
             sleep 3
           done
         timeout-minutes: 1
@@ -155,18 +162,131 @@ jobs:
 
       - name: Check that the module gets unloaded from the node
         run: |
-          until ! minikube ssh -- lsmod | grep ooto_ci; do
+          until ! minikube ssh -- lsmod | grep ooto_ci_a; do
             sleep 3
           done
         timeout-minutes: 1
 
       - name: Describe the DaemonSet
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name=ooto-ci
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
         continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
         if: ${{ always() }}
 
       - name: Describe the Pod
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name=ooto-ci
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
+        continue-on-error: true # if the job succeeded, the pod might be gone already
+        if: ${{ always() }}
+
+      - name: Collect dmesg
+        run: sudo dmesg
+        if: ${{ always() }}
+
+      - name: Get all operator logs
+        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
+        if: ${{ always() }}
+
+  e2e-two-nodes:
+    name: Prebuilt kernel module - two nodes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Save the kernel version
+        run: echo "KERNEL_VERSION=$(uname -r)" >> $GITHUB_ENV
+
+      - name: Build both kernel modules
+        run: make KERNEL_SRC_DIR="/usr/src/linux-headers-${KERNEL_VERSION}"
+        working-directory: ci/ooto-kmod
+
+      - name: Download and install minikube
+        run: |
+          wget https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+          sudo dpkg -i ./minikube_latest_amd64.deb
+
+      - name: Start minikube and wait until CoreDNS is available
+        run: |
+          minikube start --driver=docker -n 2
+          kubectl wait --for=condition=available deployment coredns -n kube-system
+
+      - name: Build the DriverContainer image
+        run: minikube image build -t ooto-kmod:local --build-opt build-arg=KERNEL_VERSION=${KERNEL_VERSION} ci/ooto-kmod
+
+      - name: Build OOTO
+        run: minikube image build -t ooto:local .
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.17.6
+
+      - name: Install NFD
+        run: kubectl apply -k https://github.com/kubernetes-sigs/node-feature-discovery/deployment/overlays/default?ref=v0.10.1
+
+      - name: Deploy OOTO
+        run: make deploy
+        env:
+          IMG: ooto:local
+
+      - name: Set the OOTO manager's pull policy to Never
+        run: kubectl patch deployments.apps -n oot-operator-system oot-operator-controller-manager --patch-file ci/patch-ooto-manager-pullpolicy.yml
+
+      - name: Create one Module for each node
+        run: |
+          # Node minikube gets module a
+          sed -e s/NAME_CHANGEME/ooto-ci-a/g \
+            -e s/KMOD_CHANGEME/ooto_ci_a/g \
+            -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
+            ci/module-ooto-ci.template.yaml | tee module-ooto-ci-a.yaml
+
+          # Node minikube-m02 gets module b
+          sed -e s/NAME_CHANGEME/ooto-ci-b/g \
+            -e s/KMOD_CHANGEME/ooto_ci_b/g \
+            -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
+            ci/module-ooto-ci.template.yaml | tee module-ooto-ci-b.yaml
+
+          kubectl apply -f module-ooto-ci-a.yaml -f module-ooto-ci-b.yaml
+
+      - name: Label the first node to have it receive module a
+        run: kubectl label node minikube wants-oot-module=ooto_ci_a
+
+      - name: Check that module a gets loaded on the first node
+        run: |
+          until minikube ssh -- lsmod | grep ooto_ci_a; do
+            sleep 3
+          done
+        timeout-minutes: 1
+
+      - name: Label the second node to have it receive module b
+        run: kubectl label node minikube-m02 wants-oot-module=ooto_ci_b
+
+      - name: Check that module b gets loaded on the second node
+        run: |
+          until minikube ssh -n minikube-m02 -- lsmod | grep ooto_ci_b; do
+            sleep 3
+          done
+        timeout-minutes: 1
+
+      - name: Remove the wants-oot-module label on the second node
+        run: kubectl label node minikube-m02 wants-oot-module-
+
+      - name: Check that module b gets unloaded from the second node
+        run: |
+          until ! minikube ssh -n minikube-m02 -- lsmod | grep ooto_ci_b; do
+            sleep 3
+          done
+        timeout-minutes: 1
+
+      - name: Describe nodes
+        run: kubectl describe node
+        if: ${{ always() }}
+
+      - name: Describe DaemonSets
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
+        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
+        if: ${{ always() }}
+
+      - name: Describe Pods
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
         continue-on-error: true # if the job succeeded, the pod might be gone already
         if: ${{ always() }}
 
