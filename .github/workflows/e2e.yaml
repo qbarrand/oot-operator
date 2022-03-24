@@ -51,26 +51,33 @@ jobs:
         run: kubectl apply -k https://github.com/kubernetes-sigs/node-feature-discovery/deployment/overlays/default?ref=v0.10.1
         if: ${{ matrix.install-nfd }}
 
+      - name: Label the node so that it gets the module
+        run: kubectl label node minikube wants-oot-module=ooto_ci_a
+
       - name: Deploy OOTO
         run: make deploy
         env:
           KUSTOMIZE_CONFIG_DEFAULT: ${{ matrix.kustomize-config-default }}
 
-      - name: Check that the ooto_ci module is not loaded on the node
+      - name: Check that the ooto_ci_a module is not loaded on the node
         run: |
-          if minikube ssh -- lsmod | grep ooto_ci; then
+          if minikube ssh -- lsmod | grep ooto_ci_a; then
             echo "Unexpected lsmod output - the module should not be loaded"
             exit 1
           fi
 
       - name: Add an ooto-ci Module that contains a mapping for $KERNEL_VERSION
         run: |
-          sed "s/KVER_CHANGEME/${KERNEL_VERSION}/g" ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
+          sed -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
+            -e s/NAME_CHANGEME/ooto-ci/ \
+            -e s/KMOD_CHANGEME/ooto_ci_a_a/ \
+            ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
+
           kubectl apply -f module-ooto-ci.yaml
 
       - name: Check that the module gets loaded on the node
         run: |
-          until minikube ssh -- lsmod | grep ooto_ci; do
+          until minikube ssh -- lsmod | grep ooto_ci_a; do
             sleep 3
           done
         timeout-minutes: 1
@@ -80,7 +87,7 @@ jobs:
 
       - name: Check that the module gets unloaded from the node
         run: |
-          until ! minikube ssh -- lsmod | grep ooto_ci; do
+          until ! minikube ssh -- lsmod | grep ooto_ci_a_a; do
             sleep 3
           done
         timeout-minutes: 1
@@ -127,10 +134,7 @@ jobs:
       - name: Deploy OOTO
         run: make deploy
         env:
-          IMG: ooto:local
-
-      - name: Set the OOTO manager's pull policy to Never
-        run: kubectl patch deployments.apps -n oot-operator-system oot-operator-controller-manager --patch-file ci/patch-ooto-manager-pullpolicy.yml
+          KUSTOMIZE_CONFIG_DEFAULT: ci/install-ci
 
       - name: Create one Module for each node
         run: |
