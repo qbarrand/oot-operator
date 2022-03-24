@@ -93,7 +93,7 @@ jobs:
         timeout-minutes: 1
 
       - name: Get all resources in the namespace
-        run: kubectl get all -n ${{ inputs.namespace }}
+        run: kubectl get all -n oot-operator-system
         if: ${{ always() }}
 
       - name: Describe nodes
@@ -101,12 +101,12 @@ jobs:
         if: ${{ always() }}
 
       - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n ${{ inputs.namespace }}
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n oot-operator-system
         continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
         if: ${{ always() }}
 
       - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n ${{ inputs.namespace }}
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n oot-operator-system
         continue-on-error: true # if the job succeeded, the pod might be gone already
         if: ${{ always() }}
 
@@ -115,7 +115,7 @@ jobs:
         if: ${{ always() }}
 
       - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n ${{ inputs.namespace }}
+        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
         if: ${{ always() }}
 
   e2e-two-nodes:
@@ -207,7 +207,7 @@ jobs:
         timeout-minutes: 1
 
       - name: Get all resources in the namespace
-        run: kubectl get all -n ${{ inputs.namespace }}
+        run: kubectl get all -n oot-operator-system
         if: ${{ always() }}
 
       - name: Describe nodes
@@ -215,12 +215,12 @@ jobs:
         if: ${{ always() }}
 
       - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n ${{ inputs.namespace }}
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n oot-operator-system
         continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
         if: ${{ always() }}
 
       - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n ${{ inputs.namespace }}
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n oot-operator-system
         continue-on-error: true # if the job succeeded, the pod might be gone already
         if: ${{ always() }}
 
@@ -229,5 +229,5 @@ jobs:
         if: ${{ always() }}
 
       - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n ${{ inputs.namespace }}
+        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
         if: ${{ always() }}
