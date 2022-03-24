@@ -92,7 +92,7 @@ jobs:
           done
         timeout-minutes: 1
 
-      - uses: ./.github/workflows/debug-ooto
+      - uses: ./.github/workflows/debug-ooto.yaml
         if: ${{ always() }}
 
   e2e-two-nodes:
@@ -183,5 +183,5 @@ jobs:
           done
         timeout-minutes: 1
 
-      - uses: ./.github/workflows/debug-ooto
+      - uses: ./.github/workflows/debug-ooto.yaml
         if: ${{ always() }}
