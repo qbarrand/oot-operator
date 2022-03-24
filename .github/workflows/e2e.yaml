@@ -59,6 +59,16 @@ jobs:
         env:
           KUSTOMIZE_CONFIG_DEFAULT: ${{ matrix.kustomize-config-default }}
 
+      - name: Wait until the OOTO Deployment is Ready
+        run: kubectl wait --for condition=Ready deployments.apps -n oot-operator-system oot-operator-controller-manager
+        timeout-minutes: 1
+
+      - name: Describe the Deployment and get its YAML if that failed
+        run: |
+          kubectl describe deployments.apps -n oot-operator-system oot-operator-controller-manager
+          kubectl get -o yaml deployments.apps -n oot-operator-system oot-operator-controller-manager
+        if: ${{ failure() }}
+
       - name: Check that the ooto_ci_a module is not loaded on the node
         run: |
           if minikube ssh -- lsmod | grep ooto_ci_a; then
@@ -101,13 +111,11 @@ jobs:
         if: ${{ always() }}
 
       - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n oot-operator-system
-        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
         if: ${{ always() }}
 
       - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n oot-operator-system
-        continue-on-error: true # if the job succeeded, the pod might be gone already
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
         if: ${{ always() }}
 
       - name: Collect dmesg
@@ -159,6 +167,16 @@ jobs:
         run: make deploy
         env:
           KUSTOMIZE_CONFIG_DEFAULT: ci/install-ci
+
+      - name: Wait until the OOTO Deployment is Ready
+        run: kubectl wait --for condition=Ready deployments.apps -n oot-operator-system oot-operator-controller-manager
+        timeout-minutes: 1
+
+      - name: Describe the Deployment and get its YAML if that failed
+        run: |
+          kubectl describe deployments.apps -n oot-operator-system oot-operator-controller-manager
+          kubectl get -o yaml deployments.apps -n oot-operator-system oot-operator-controller-manager
+        if: ${{ failure() }}
 
       - name: Create one Module for each node
         run: |
@@ -215,13 +233,11 @@ jobs:
         if: ${{ always() }}
 
       - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n oot-operator-system
-        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
         if: ${{ always() }}
 
       - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n oot-operator-system
-        continue-on-error: true # if the job succeeded, the pod might be gone already
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
         if: ${{ always() }}
 
       - name: Collect dmesg
