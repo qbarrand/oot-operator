@@ -93,6 +93,7 @@ jobs:
         timeout-minutes: 1
 
       - uses: ./.github/workflows/debug-ooto
+        if: ${{ always() }}
 
   e2e-two-nodes:
     name: Prebuilt kernel module - two nodes
@@ -183,3 +184,4 @@ jobs:
         timeout-minutes: 1
 
       - uses: ./.github/workflows/debug-ooto
+        if: ${{ always() }}

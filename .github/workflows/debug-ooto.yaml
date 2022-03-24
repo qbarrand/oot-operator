@@ -13,6 +13,7 @@ jobs:
     steps:
       - name: Get all resources in the namespace
         run: kubectl get all -n ${{ inputs.namespace }}
+        if: ${{ always() }}
 
       - name: Describe nodes
         run: kubectl describe node
