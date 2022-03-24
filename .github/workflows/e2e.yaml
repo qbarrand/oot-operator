@@ -59,8 +59,8 @@ jobs:
         env:
           KUSTOMIZE_CONFIG_DEFAULT: ${{ matrix.kustomize-config-default }}
 
-      - name: Wait until the OOTO Deployment is Ready
-        run: kubectl wait --for condition=Ready deployments.apps -n oot-operator-system oot-operator-controller-manager
+      - name: Wait until the OOTO Deployment is Available
+        run: kubectl wait --for condition=Available deployments.apps -n oot-operator-system oot-operator-controller-manager
         timeout-minutes: 1
 
       - name: Describe the Deployment and get its YAML if that failed
@@ -168,8 +168,8 @@ jobs:
         env:
           KUSTOMIZE_CONFIG_DEFAULT: ci/install-ci
 
-      - name: Wait until the OOTO Deployment is Ready
-        run: kubectl wait --for condition=Ready deployments.apps -n oot-operator-system oot-operator-controller-manager
+      - name: Wait until the OOTO Deployment is Available
+        run: kubectl wait --for condition=Available deployments.apps -n oot-operator-system oot-operator-controller-manager
         timeout-minutes: 1
 
       - name: Describe the Deployment and get its YAML if that failed
