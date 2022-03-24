@@ -150,8 +150,8 @@ jobs:
           minikube start --driver=docker -n 2
           kubectl wait --for=condition=available deployment coredns -n kube-system
 
-      - name: Build the DriverContainer image
-        run: minikube image build -t ooto-kmod:local --build-opt build-arg=KERNEL_VERSION=${KERNEL_VERSION} ci/ooto-kmod
+      - name: Build the DriverContainer image on all nodes
+        run: minikube image build --all -t ooto-kmod:local --build-opt build-arg=KERNEL_VERSION=${KERNEL_VERSION} ci/ooto-kmod
 
       - name: Build OOTO
         run: minikube image build -t ooto:local .
