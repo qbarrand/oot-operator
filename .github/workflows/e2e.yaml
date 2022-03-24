@@ -14,7 +14,7 @@ jobs:
           - kustomize-config-default: ci/install-ci
             install-nfd: false
 
-    name: "Prebuilt kernel module (NFD: ${{ matrix.install-nfd }}"
+    name: "Prebuilt kernel module (NFD: ${{ matrix.install-nfd }})"
 
     steps:
       - name: Checkout
