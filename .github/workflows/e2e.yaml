@@ -70,7 +70,7 @@ jobs:
         run: |
           sed -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
             -e s/NAME_CHANGEME/ooto-ci/ \
-            -e s/KMOD_CHANGEME/ooto_ci_a_a/ \
+            -e s/KMOD_CHANGEME/ooto_ci_a/ \
             ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
 
           kubectl apply -f module-ooto-ci.yaml
@@ -87,7 +87,7 @@ jobs:
 
       - name: Check that the module gets unloaded from the node
         run: |
-          until ! minikube ssh -- lsmod | grep ooto_ci_a_a; do
+          until ! minikube ssh -- lsmod | grep ooto_ci_a; do
             sleep 3
           done
         timeout-minutes: 1
