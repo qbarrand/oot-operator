@@ -1,0 +1,37 @@
+on:
+  workflow_call:
+    inputs:
+      namespace:
+        type: string
+        required: false
+        default: oot-operator-system
+
+jobs:
+  gsther-debug-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get all resources in the namespace
+        run: kubectl get all -n ${{ inputs.namespace }}
+
+      - name: Describe nodes
+        run: kubectl describe node
+        if: ${{ always() }}
+
+      - name: Describe DaemonSets
+        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name -n ${{ inputs.namespace }}
+        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
+        if: ${{ always() }}
+
+      - name: Describe Pods
+        run: kubectl describe pod -l oot.node.kubernetes.io/module.name -n ${{ inputs.namespace }}
+        continue-on-error: true # if the job succeeded, the pod might be gone already
+        if: ${{ always() }}
+
+      - name: Collect dmesg
+        run: sudo dmesg
+        if: ${{ always() }}
+
+      - name: Get all operator logs
+        run: kubectl logs deployment.apps/oot-operator-controller-manager -n ${{ inputs.namespace }}
+        if: ${{ always() }}

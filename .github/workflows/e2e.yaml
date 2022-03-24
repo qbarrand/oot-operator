@@ -3,9 +3,19 @@ name: e2e
 on: [pull_request]
 
 jobs:
-  e2e-nfd-labeling:
-    name: Prebuilt kernel module - NFD labeling
+  e2e:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - kustomize-config-default: ci/install-nfd-labeling
+            install-nfd: true
+          - kustomize-config-default: ci/install-ci
+            install-nfd: false
+
+    name: "Prebuilt kernel module (NFD: ${{ matrix.install-nfd }}"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -39,11 +49,12 @@ jobs:
 
       - name: Install NFD
         run: kubectl apply -k https://github.com/kubernetes-sigs/node-feature-discovery/deployment/overlays/default?ref=v0.10.1
+        if: ${{ matrix.install-nfd }}
 
       - name: Deploy OOTO
         run: make deploy
         env:
-          KUSTOMIZE_CONFIG_DEFAULT: ci/install-nfd-labeling
+          KUSTOMIZE_CONFIG_DEFAULT: ${{ matrix.kustomize-config-default }}
 
       - name: Check that the ooto_ci module is not loaded on the node
         run: |
@@ -74,116 +85,7 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Describe the DaemonSet
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name=ooto-ci
-        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
-        if: ${{ always() }}
-
-      - name: Describe the Pod
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name=ooto-ci
-        continue-on-error: true # if the job succeeded, the pod might be gone already
-        if: ${{ always() }}
-
-      - name: Collect dmesg
-        run: sudo dmesg
-        if: ${{ always() }}
-
-      - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
-        if: ${{ always() }}
-
-  e2e-ooto-labeling:
-    name: Prebuilt kernel module - OOTO labeling
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Save the kernel version
-        run: echo "KERNEL_VERSION=$(uname -r)" >> $GITHUB_ENV
-
-      - name: Build the kernel module
-        run: make KERNEL_SRC_DIR="/usr/src/linux-headers-${KERNEL_VERSION}"
-        working-directory: ci/ooto-kmod
-
-      - name: Download and install minikube
-        run: |
-          wget https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-          sudo dpkg -i ./minikube_latest_amd64.deb
-
-      - name: Start minikube and wait until CoreDNS is available
-        run: |
-          minikube start --driver=docker
-          kubectl wait --for=condition=available deployment coredns -n kube-system
-
-      - name: Build ooto-kmod
-        run: minikube image build -t ooto-kmod:local --build-opt build-arg=KERNEL_VERSION=${KERNEL_VERSION} ci/ooto-kmod
-
-      - name: Build OOTO
-        run: minikube image build -t ooto:local .
-
-      - uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.6
-
-      - name: Deploy OOTO
-        run: make deploy
-        env:
-          KUSTOMIZE_CONFIG_DEFAULT: ci/install-ci
-
-      - name: Check that the ooto_ci_a module is not loaded on the node
-        run: |
-          if minikube ssh -- lsmod | grep ooto_ci_a; then
-            echo "Unexpected lsmod output - the module should not be loaded"
-            exit 1
-          fi
-
-      - name: Label the node
-        run: kubectl label node minikube wants-oot-module=ooto_ci_a
-
-      - name: Add an ooto-ci Module that contains a mapping for $KERNEL_VERSION
-        run: |
-          sed -e s/NAME_CHANGEME/ooto-ci/g \
-            -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
-            -e s/KMOD_CHANGEME/ooto_ci_a/ \
-            ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
-
-          kubectl apply -f module-ooto-ci.yaml
-
-      - name: Check that the module gets loaded on the node
-        run: |
-          until minikube ssh -- lsmod | grep ooto_ci_a; do
-            sleep 3
-          done
-        timeout-minutes: 1
-
-      - name: Remove the Module
-        run: kubectl delete -f module-ooto-ci.yaml
-
-      - name: Check that the module gets unloaded from the node
-        run: |
-          until ! minikube ssh -- lsmod | grep ooto_ci_a; do
-            sleep 3
-          done
-        timeout-minutes: 1
-
-      - name: Describe the DaemonSet
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
-        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
-        if: ${{ always() }}
-
-      - name: Describe the Pod
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
-        continue-on-error: true # if the job succeeded, the pod might be gone already
-        if: ${{ always() }}
-
-      - name: Collect dmesg
-        run: sudo dmesg
-        if: ${{ always() }}
-
-      - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
-        if: ${{ always() }}
+      - uses: ./.github/workflows/debug-ooto
 
   e2e-two-nodes:
     name: Prebuilt kernel module - two nodes
@@ -276,24 +178,4 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Describe nodes
-        run: kubectl describe node
-        if: ${{ always() }}
-
-      - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
-        continue-on-error: true # if the job succeeded, the DaemonSet might be gone already
-        if: ${{ always() }}
-
-      - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
-        continue-on-error: true # if the job succeeded, the pod might be gone already
-        if: ${{ always() }}
-
-      - name: Collect dmesg
-        run: sudo dmesg
-        if: ${{ always() }}
-
-      - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
-        if: ${{ always() }}
+      - uses: ./.github/workflows/debug-ooto
