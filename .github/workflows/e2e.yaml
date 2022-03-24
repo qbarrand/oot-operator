@@ -172,10 +172,13 @@ jobs:
         run: kubectl wait --for condition=Available deployments.apps -n oot-operator-system oot-operator-controller-manager
         timeout-minutes: 1
 
-      - name: Describe the Deployment and get its YAML if that failed
+      - name: Describe the Deployment / pods and get their YAML if that failed
         run: |
           kubectl describe deployments.apps -n oot-operator-system oot-operator-controller-manager
           kubectl get -o yaml deployments.apps -n oot-operator-system oot-operator-controller-manager
+
+          kubectl describe pod -n oot-operator-system
+          kubectl get -o yaml pod -n oot-operator-system
         if: ${{ failure() }}
 
       - name: Create one Module for each node
