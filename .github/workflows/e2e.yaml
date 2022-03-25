@@ -160,9 +160,6 @@ jobs:
         with:
           go-version: 1.17.6
 
-      - name: Install NFD
-        run: kubectl apply -k https://github.com/kubernetes-sigs/node-feature-discovery/deployment/overlays/default?ref=v0.10.1
-
       - name: Deploy OOTO
         run: make deploy
         env:
