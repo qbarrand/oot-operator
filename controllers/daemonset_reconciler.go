@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=delete;get;list;watch
+
 type DaemonSetReconciler struct {
 	client client.Client
 }
