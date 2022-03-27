@@ -228,7 +228,7 @@ jobs:
           set -eux
 
           # Get the DaemonSet's name, as we cannot patch by label
-          DS_NAME=$(kubectl get daemonsets.apps -l oot.node.kubernetes.io/module.name=ooto_ci_b --template='{{ (index .items 0).metadata.name }}')
+          DS_NAME=$(kubectl get daemonsets.apps -l oot.node.kubernetes.io/module.name=ooto-ci-b --template='{{ (index .items 0).metadata.name }}')
 
           # Verify that we got the name
           test -n "${DS_NAME}"
