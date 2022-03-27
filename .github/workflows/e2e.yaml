@@ -128,9 +128,9 @@ jobs:
             echo "Unexpected lsmod output - the module should not be loaded"
             exit 1
           fi
-      - name: Add an ooto-ci Module that contains a mapping for $KERNEL_VERSION
+      - name: Add an ooto-ci Module that contains a valid mapping
         run: |
-          sed -e "s/KVER_CHANGEME/${KERNEL_VERSION}/g" \
+          sed -e "s/KVER_CHANGEME/$(uname -r)/g" \
             -e s/NAME_CHANGEME/ooto-ci/ \
             -e s/KMOD_CHANGEME/ooto_ci_a/ \
             ci/module-ooto-ci.template.yaml | tee module-ooto-ci.yaml
@@ -235,6 +235,8 @@ jobs:
 
       - name: Create one Module for each node
         run: |
+          KERNEL_VERSION="$(uname -r)"
+
           # Node minikube gets module a
           sed -e s/NAME_CHANGEME/ooto-ci-a/g \
             -e s/KMOD_CHANGEME/ooto_ci_a/g \
