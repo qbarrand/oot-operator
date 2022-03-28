@@ -23,6 +23,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	"github.com/qbarrand/oot-operator/controllers/build"
 	"github.com/qbarrand/oot-operator/controllers/module"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -143,27 +144,21 @@ func main() {
 
 	setupLog.V(1).Info("Using kernel label", "label", kernelLabel)
 
+	bm := build.NewJobManager(client, namespace, scheme)
 	dc := controllers.NewDaemonSetCreator(client, kernelLabel, namespace, scheme)
 	km := module.NewKernelMapper()
 	su := module.NewConditionsUpdater(client.Status())
 
-	mc := controllers.NewModuleReconciler(client, namespace, dc, km, su)
+	mc := controllers.NewModuleReconciler(client, namespace, bm, dc, km, su)
 
-	if err = mc.SetupWithManager(mgr); err != nil {
+	if err = mc.SetupWithManager(mgr, kernelLabel); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Module")
-		os.Exit(1)
-	}
-
-	nr := controllers.NewNodeReconciler(client, namespace, dc, km)
-
-	if err = nr.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
 		os.Exit(1)
 	}
 
 	dsr := controllers.NewDaemonSetReconciler(client)
 
-	if err = dsr.SetupWithManager(mgr); err != nil {
+	if err = dsr.SetupWithManager(mgr, namespace); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DaemonSet")
 		os.Exit(1)
 	}
