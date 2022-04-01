@@ -75,6 +75,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: DEBUG: List all kernel modules
+        run: find /lib/modules/$(uname -r) -type f -name '*.ko*'
+
       - name: Download and install minikube
         run: |
           wget https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
