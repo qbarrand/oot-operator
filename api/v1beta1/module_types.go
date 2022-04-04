@@ -48,7 +48,7 @@ type ModuleSpec struct {
 
 	// +optional
 
-	// DriverContainer allows overriding some properties of the container that deploys the device plugin on the node.
+	// DevicePlugin allows overriding some properties of the container that deploys the device plugin on the node.
 	// Name is ignored and is set automatically by the OOT Operator.
 	DevicePlugin *v1.Container `json:"devicePlugin"`
 
