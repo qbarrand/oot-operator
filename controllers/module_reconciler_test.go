@@ -9,7 +9,6 @@ import (
 	ootov1beta1 "github.com/qbarrand/oot-operator/api/v1beta1"
 	"github.com/qbarrand/oot-operator/controllers"
 	"github.com/qbarrand/oot-operator/controllers/build"
-	"github.com/qbarrand/oot-operator/controllers/constants"
 	"github.com/qbarrand/oot-operator/controllers/module"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -240,42 +239,6 @@ var _ = Describe("ModuleReconciler", func() {
 			Expect(dsList.Items[0].Labels).To(HaveKeyWithValue("test", "test"))
 		})
 	})
-})
-
-var _ = Describe("ModuleReconcilerOwnedPredicate", func() {
-	const namespace = "test-namespace"
-
-	p := controllers.ModuleReconcilerOwnedPredicate(namespace)
-
-	dsWithoutLabel := appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace},
-	}
-
-	dsBadNamespace := appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{constants.ModuleNameLabel: "some-module"},
-		},
-	}
-
-	dsGood := appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Labels:    map[string]string{constants.ModuleNameLabel: "some-module"},
-		},
-	}
-
-	DescribeTable("should return the expected value",
-		func(ds *appsv1.DaemonSet, expected bool) {
-			Expect(
-				p.Create(event.CreateEvent{Object: ds}),
-			).To(
-				Equal(expected),
-			)
-		},
-		Entry("no module label", &dsWithoutLabel, false),
-		Entry("bad namespace", &dsBadNamespace, false),
-		Entry("correct namespace and module label", &dsGood, true),
-	)
 })
 
 var _ = Describe("ModuleReconcilerNodePredicate", func() {

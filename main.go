@@ -24,6 +24,7 @@ import (
 	"runtime/debug"
 
 	"github.com/qbarrand/oot-operator/controllers/build"
+	"github.com/qbarrand/oot-operator/controllers/build/job"
 	"github.com/qbarrand/oot-operator/controllers/module"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -144,7 +145,7 @@ func main() {
 
 	setupLog.V(1).Info("Using kernel label", "label", kernelLabel)
 
-	bm := build.NewJobManager(client, namespace, scheme)
+	bm := job.NewJobManager(client, build.NewGetter(), job.NewMaker(namespace, scheme), namespace)
 	dc := controllers.NewDaemonSetCreator(client, kernelLabel, namespace, scheme)
 	km := module.NewKernelMapper()
 	su := module.NewConditionsUpdater(client.Status())

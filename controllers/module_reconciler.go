@@ -22,7 +22,6 @@ import (
 
 	ootov1beta1 "github.com/qbarrand/oot-operator/api/v1beta1"
 	"github.com/qbarrand/oot-operator/controllers/build"
-	"github.com/qbarrand/oot-operator/controllers/constants"
 	"github.com/qbarrand/oot-operator/controllers/module"
 	"github.com/qbarrand/oot-operator/controllers/predicates"
 	appsv1 "k8s.io/api/apps/v1"
@@ -199,18 +198,10 @@ func (r *ModuleReconciler) SetupWithManager(mgr ctrl.Manager, kernelLabel string
 		mgr.GetLogger().WithName("NodeModuleMapper"),
 	)
 
-	ownedPredicate := ModuleReconcilerOwnedPredicate(r.namespace)
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ootov1beta1.Module{}).
-		Owns(
-			&appsv1.DaemonSet{},
-			builder.WithPredicates(ownedPredicate),
-		).
-		Owns(
-			&batchv1.Job{},
-			builder.WithPredicates(ownedPredicate),
-		).
+		Owns(&appsv1.DaemonSet{}).
+		Owns(&batchv1.Job{}).
 		Watches(
 			&source.Kind{Type: &v1.Node{}},
 			handler.EnqueueRequestsFromMapFunc(nmm.FindModulesForNode),
@@ -221,17 +212,10 @@ func (r *ModuleReconciler) SetupWithManager(mgr ctrl.Manager, kernelLabel string
 		Complete(r)
 }
 
-func ModuleReconcilerOwnedPredicate(namespace string) predicate.Predicate {
-	return predicate.And(
-		predicates.HasLabel(constants.ModuleNameLabel),
-		predicates.Namespace(namespace),
-	)
-}
-
 func ModuleReconcilerNodePredicate(kernelLabel string) predicate.Predicate {
 	return predicate.And(
 		predicates.SkipDeletions,
-		predicate.LabelChangedPredicate{},
 		predicates.HasLabel(kernelLabel),
+		predicate.LabelChangedPredicate{},
 	)
 }
