@@ -7,8 +7,8 @@ require (
 	github.com/google/go-cmp v0.5.5
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.17.0
-	k8s.io/api v0.23.4
-	k8s.io/apimachinery v0.23.4
+	k8s.io/api v0.23.5
+	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.0
 	sigs.k8s.io/controller-runtime v0.11.0
 )
