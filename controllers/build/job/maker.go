@@ -11,6 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+//go:generate mockgen -source=maker.go -package=job -destination=mock_maker.go
+
 type Maker interface {
 	MakeJob(mod ootov1beta1.Module, m ootov1beta1.KernelMapping, targetKernel string) (*batchv1.Job, error)
 }

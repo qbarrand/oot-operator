@@ -12,6 +12,8 @@ import (
 	ootov1beta1 "github.com/qbarrand/oot-operator/api/v1beta1"
 )
 
+//go:generate mockgen -source=getter.go -package=build -destination=mock_getter.go
+
 type Getter interface {
 	ImageExists(ctx context.Context, containerImage string, po ootov1beta1.PullOptions) (bool, error)
 }

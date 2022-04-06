@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var ErrNoMatchingBuild = errors.New("no matching build")
+var errNoMatchingBuild = errors.New("no matching build")
 
 type jobManager struct {
 	client    client.Client
@@ -22,7 +22,7 @@ type jobManager struct {
 	namespace string
 }
 
-func NewJobManager(client client.Client, getter build.Getter, maker Maker, namespace string) build.Manager {
+func NewBuildManager(client client.Client, getter build.Getter, maker Maker, namespace string) build.Manager {
 	return &jobManager{
 		client:    client,
 		getter:    getter,
@@ -38,7 +38,7 @@ func Labels(mod ootov1beta1.Module, targetKernel string) map[string]string {
 	}
 }
 
-func (jbm *jobManager) GetJob(ctx context.Context, mod ootov1beta1.Module, targetKernel string) (*batchv1.Job, error) {
+func (jbm *jobManager) getJob(ctx context.Context, mod ootov1beta1.Module, targetKernel string) (*batchv1.Job, error) {
 	jobList := batchv1.JobList{}
 
 	opts := []client.ListOption{
@@ -51,7 +51,7 @@ func (jbm *jobManager) GetJob(ctx context.Context, mod ootov1beta1.Module, targe
 	}
 
 	if n := len(jobList.Items); n == 0 {
-		return nil, ErrNoMatchingBuild
+		return nil, errNoMatchingBuild
 	} else if n > 1 {
 		return nil, fmt.Errorf("expected 0 or 1 job, got %d", n)
 	}
@@ -73,9 +73,9 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1beta1.Module, m ootov
 
 	logger.Info("Image not pull-able; building in-cluster")
 
-	job, err := jbm.GetJob(ctx, mod, targetKernel)
+	job, err := jbm.getJob(ctx, mod, targetKernel)
 	if err != nil {
-		if !errors.Is(err, ErrNoMatchingBuild) {
+		if !errors.Is(err, errNoMatchingBuild) {
 			return build.Result{}, fmt.Errorf("error getting the build: %v", err)
 		}
 
@@ -97,7 +97,7 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1beta1.Module, m ootov
 
 	switch {
 	case job.Status.Succeeded == 1:
-		return build.Result{Status: build.StatusCompleted, Requeue: true}, nil
+		return build.Result{Status: build.StatusCompleted}, nil
 	case job.Status.Active == 1:
 		return build.Result{Status: build.StatusInProgress, Requeue: true}, nil
 	case job.Status.Failed == 1:
