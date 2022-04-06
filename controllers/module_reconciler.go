@@ -156,7 +156,7 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}
 
 			if buildRes.Requeue {
-				logger.Info("Build requires a requeue; skipping this mapping for now")
+				logger.Info("Build requires a requeue; skipping this mapping for now", "status", buildRes.Status)
 				res.Requeue = true
 				continue
 			}

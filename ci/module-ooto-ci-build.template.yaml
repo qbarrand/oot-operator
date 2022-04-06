@@ -10,10 +10,10 @@ spec:
     lifecycle:
       postStart:
         exec:
-          command: [modprobe, -v, ooto_ci_a]
+          command: [modprobe, -vd, /opt, ooto_ci_a]
       preStop:
         exec:
-          command: [modprobe, -rv, ooto_ci_a]
+          command: [modprobe, -rvd, /opt, ooto_ci_a]
     securityContext:
       capabilities:
         add: [SYS_MODULE]
