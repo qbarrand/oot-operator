@@ -291,7 +291,7 @@ jobs:
       - name: Verify that the DaemonSet gets garbage collected
         run: |
           # Cannot use kubectl wait because it will fail if there is no initial match
-          until [ kubectl get daemonsets.apps -l oot.node.kubernetes.io/module.name=ooto-ci-b -o go-template='{{ len .items }}') -ne 0 ]; do
+          until [ $(kubectl get daemonsets.apps -l oot.node.kubernetes.io/module.name=ooto-ci-b -o go-template='{{ len .items }}') -eq 0 ]; do
             sleep 3
           done
         timeout-minutes: 1
