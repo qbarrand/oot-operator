@@ -101,11 +101,6 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return res, fmt.Errorf("could not list nodes: %v", err)
 	}
 
-	if len(nodes.Items) == 0 {
-		logger.Info("No nodes matching the selector; skipping module")
-		return res, nil
-	}
-
 	mappings := make(map[string]*ootov1alpha1.KernelMapping)
 
 	for _, node := range nodes.Items {
@@ -186,6 +181,8 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		logger.Info("Reconciled DaemonSet", "name", ds.Name, "result", opRes)
 	}
 
+	logger.Info("Garbage-collecting DaemonSets")
+
 	// Garbage collect old DaemonSets for which there are no nodes.
 	validKernels := sets.StringKeySet(mappings)
 
@@ -194,7 +191,7 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return res, fmt.Errorf("could not garbage collect DaemonSets: %v", err)
 	}
 
-	logger.Info("Garbage collected DaemonSets", "names", deleted)
+	logger.Info("Garbage-collected DaemonSets", "names", deleted)
 
 	return res, nil
 }
