@@ -288,9 +288,10 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Verify that the DaemonSet controller works
+      - name: Verify that the DaemonSet gets garbage collected
         run: |
-          until ! kubectl get daemonsets.apps -l oot.node.kubernetes.io/module.name=ooto-ci-b; do
+          # Cannot use kubectl wait because it will fail if there is no initial match
+          until [ kubectl get daemonsets.apps -l oot.node.kubernetes.io/module.name=ooto-ci-b -o go-template='{{ len .items }}') -ne 0 ]; do
             sleep 3
           done
         timeout-minutes: 1
