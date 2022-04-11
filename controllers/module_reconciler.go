@@ -28,6 +28,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,7 +71,7 @@ func NewModuleReconciler(
 //+kubebuilder:rbac:groups=ooto.sigs.k8s.io,resources=modules,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ooto.sigs.k8s.io,resources=modules/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ooto.sigs.k8s.io,resources=modules/finalizers,verbs=update
-//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=create;get;list;patch;watch
+//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=create;delete;get;list;patch;watch
 //+kubebuilder:rbac:groups="core",resources=nodes,verbs=get;list;watch
 //+kubebuilder:rbac:groups="batch",resources=jobs,verbs=create;list;watch
 
@@ -185,8 +186,15 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		logger.Info("Reconciled DaemonSet", "name", ds.Name, "result", opRes)
 	}
 
-	// TODO we need to garbage collect DaemonSets here.
-	// If we removed a kernel mapping from the Module, the corresponding DaemonSet is currently not deleted.
+	// Garbage collect old DaemonSets for which there are no nodes.
+	validKernels := sets.StringKeySet(mappings)
+
+	deleted, err := r.dc.GarbageCollect(ctx, dsByKernelVersion, validKernels)
+	if err != nil {
+		return res, fmt.Errorf("could not garbage collect DaemonSets: %v", err)
+	}
+
+	logger.Info("Garbage collected DaemonSets", "names", deleted)
 
 	return res, nil
 }

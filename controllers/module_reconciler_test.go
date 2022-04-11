@@ -14,6 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -137,6 +138,7 @@ var _ = Describe("ModuleReconciler", func() {
 				mockKM.EXPECT().FindMappingForKernel(mappings, kernelVersion).Return(&mappings[0], nil),
 				mockDC.EXPECT().ModuleDaemonSetsByKernelVersion(ctx, gomock.AssignableToTypeOf(mod)),
 				mockDC.EXPECT().SetAsDesired(&ds, imageName, gomock.AssignableToTypeOf(mod), kernelVersion),
+				mockDC.EXPECT().GarbageCollect(ctx, nil, sets.NewString(kernelVersion)),
 			)
 
 			res, err := mr.Reconcile(context.TODO(), req)
@@ -150,7 +152,7 @@ var _ = Describe("ModuleReconciler", func() {
 			Expect(dsList.Items).To(HaveLen(1))
 		})
 
-		It("should path the DaemonSet when it already exists", func() {
+		It("should patch the DaemonSet when it already exists", func() {
 			const (
 				imageName     = "test-image"
 				kernelVersion = "1.2.3"
@@ -224,6 +226,7 @@ var _ = Describe("ModuleReconciler", func() {
 					func(d *appsv1.DaemonSet, _ string, _ ootov1alpha1.Module, _ string) {
 						d.SetLabels(map[string]string{"test": "test"})
 					}),
+				mockDC.EXPECT().GarbageCollect(ctx, dsByKernelVersion, sets.NewString(kernelVersion)),
 			)
 
 			res, err := mr.Reconcile(context.TODO(), req)
