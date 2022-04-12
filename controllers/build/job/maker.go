@@ -109,17 +109,3 @@ func (m *maker) MakeJob(mod ootov1alpha1.Module, km ootov1alpha1.KernelMapping, 
 
 	return job, nil
 }
-
-func OverrideBuildArgs(args []ootov1alpha1.BuildArg, ba ...ootov1alpha1.BuildArg) {
-	overridesMap := make(map[string]ootov1alpha1.BuildArg, len(ba))
-
-	for _, b := range ba {
-		overridesMap[b.Name] = b
-	}
-
-	for i := 0; i < len(args); i++ {
-		if o, ok := overridesMap[args[i].Name]; ok {
-			args[i] = o
-		}
-	}
-}
