@@ -9,7 +9,8 @@ spec:
     command:
       - sh
       - -c
-      - cat /ci-build-secret && sleep infinity
+      # Wrap inside echo to disable stdout buffering
+      - 'echo "Hello World! secret: $(cat /ci-build-secret)" && sleep infinity'
     lifecycle:
       postStart:
         exec:
