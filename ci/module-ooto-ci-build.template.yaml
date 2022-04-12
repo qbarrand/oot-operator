@@ -7,7 +7,7 @@ spec:
   driverContainer:
     name: overwritten-anyway
     command:
-      - bash
+      - sh
       - -c
       - cat /ci-build-secret && sleep infinity
     lifecycle:
