@@ -11,7 +11,7 @@ require (
 	github.com/onsi/gomega v1.19.0
 	golang.org/x/exp v0.0.0-20220407100705-7b9b53b0aca4
 	k8s.io/api v0.23.5
-	k8s.io/apimachinery v0.23.5
+	k8s.io/apimachinery v0.23.6
 	k8s.io/client-go v0.23.5
 	k8s.io/klog/v2 v2.60.1
 	sigs.k8s.io/controller-runtime v0.11.2
