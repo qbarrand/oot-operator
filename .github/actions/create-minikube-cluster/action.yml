@@ -2,6 +2,11 @@ name: Create minikube cluster
 
 description: This action creates a minikube cluster
 
+inputs:
+  start-args:
+    required: false
+    description: Arguments passed to `minikube start`
+
 runs:
   using: composite
 
@@ -22,6 +27,6 @@ runs:
 
     - name: Start minikube and wait until CoreDNS is available
       run: |
-        minikube start --driver=docker
+        minikube start --driver=docker ${{ inputs.start-args }}
         kubectl wait --for=condition=available deployment coredns -n kube-system
       shell: bash

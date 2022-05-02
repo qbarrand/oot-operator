@@ -175,6 +175,8 @@ jobs:
 
       - name: Create the minikube cluster
         uses: ./.github/actions/create-minikube-cluster
+        with:
+          start-args: --nodes 2
 
       - name: Download container images
         uses: actions/download-artifact@v3
@@ -289,6 +291,8 @@ jobs:
 
       - name: Create the minikube cluster
         uses: ./.github/actions/create-minikube-cluster
+        with:
+          start-args: --addons registry,registry-aliases
 
       - name: Expose the registry outside the cluster
         run: kubectl apply -f ci/registry-nodeport.yaml
