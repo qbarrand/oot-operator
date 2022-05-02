@@ -79,9 +79,17 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download and install minikube
+        id: install-minikube
         run: |
           wget https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
           sudo dpkg -i ./minikube_latest_amd64.deb
+          echo "::set-output name=version::$(minikube version --short)"
+
+      - name: Cache Minikube artifacts
+        uses: actions/cache@v3
+        with:
+          path: ~/.minikube/cache
+          key: ${{ runner.os }}-${{ steps.install-minikube.version }}
 
       - name: Start minikube and wait until CoreDNS is available
         run: |
@@ -199,9 +207,17 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download and install minikube
+        id: install-minikube
         run: |
           wget https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
           sudo dpkg -i ./minikube_latest_amd64.deb
+          echo "::set-output name=version::$(minikube version --short)"
+
+      - name: Cache Minikube artifacts
+        uses: actions/cache@v3
+        with:
+          path: ~/.minikube/cache
+          key: ${{ runner.os }}-${{ steps.install-minikube.version }}
 
       - name: Start minikube and wait until CoreDNS is available
         run: |
@@ -336,9 +352,17 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Download and install minikube
+        id: install-minikube
         run: |
           wget https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
           sudo dpkg -i ./minikube_latest_amd64.deb
+          echo "::set-output name=version::$(minikube version --short)"
+
+      - name: Cache Minikube artifacts
+        uses: actions/cache@v3
+        with:
+          path: ~/.minikube/cache
+          key: ${{ runner.os }}-${{ steps.install-minikube.version }}
 
       - name: Start minikube and wait until CoreDNS is available
         run: |
