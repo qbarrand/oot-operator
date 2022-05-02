@@ -176,32 +176,8 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Get all resources in the oot-operator-system namespace
-        run: kubectl get all -n oot-operator-system
-        if: ${{ always() }}
-
-      - name: Get all resources in the default namespace
-        run: kubectl get all
-        if: ${{ always() }}
-
-      - name: Describe nodes
-        run: kubectl describe node
-        if: ${{ always() }}
-
-      - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
-        if: ${{ always() }}
-
-      - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
-        if: ${{ always() }}
-
-      - name: Collect dmesg
-        run: sudo dmesg
-        if: ${{ always() }}
-
-      - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
+      - name: Collect troubleshooting data
+        uses: ./.github/actions/collect-troubleshooting
         if: ${{ always() }}
 
   e2e-two-nodes:
@@ -329,32 +305,8 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Get all resources in the oot-operator-system namespace
-        run: kubectl get all -n oot-operator-system
-        if: ${{ always() }}
-
-      - name: Get all resources in the default namespace
-        run: kubectl get all
-        if: ${{ always() }}
-
-      - name: Describe nodes
-        run: kubectl describe node
-        if: ${{ always() }}
-
-      - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
-        if: ${{ always() }}
-
-      - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
-        if: ${{ always() }}
-
-      - name: Collect dmesg
-        run: sudo dmesg
-        if: ${{ always() }}
-
-      - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
+      - name: Collect troubleshooting data
+        uses: ./.github/actions/collect-troubleshooting
         if: ${{ always() }}
 
   in-cluster-build:
@@ -486,34 +438,6 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Get all resources in the oot-operator-system namespace
-        run: kubectl get all -n oot-operator-system
-        if: ${{ always() }}
-
-      - name: Get all resources in the default namespace
-        run: kubectl get all
-        if: ${{ always() }}
-
-      - name: Describe nodes
-        run: kubectl describe node
-        if: ${{ always() }}
-
-      - name: Describe Jobs
-        run: kubectl describe job
-        if: ${{ always() }}
-
-      - name: Describe DaemonSets
-        run: kubectl describe daemonset -l oot.node.kubernetes.io/module.name
-        if: ${{ always() }}
-
-      - name: Describe Pods
-        run: kubectl describe pod -l oot.node.kubernetes.io/module.name
-        if: ${{ always() }}
-
-      - name: Collect dmesg
-        run: sudo dmesg
-        if: ${{ always() }}
-
-      - name: Get all operator logs
-        run: kubectl logs deployment.apps/oot-operator-controller-manager -n oot-operator-system
+      - name: Collect troubleshooting data
+        uses: ./.github/actions/collect-troubleshooting
         if: ${{ always() }}
