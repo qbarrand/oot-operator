@@ -38,7 +38,10 @@ func (getter) ImageExists(ctx context.Context, containerImage string, po ootov1a
 		rt := http.DefaultTransport.(*http.Transport).Clone()
 		rt.TLSClientConfig.InsecureSkipVerify = true
 
-		remote.WithTransport(rt)
+		opts = append(
+			opts,
+			remote.WithTransport(rt),
+		)
 	}
 
 	if _, err = remote.Get(ref, opts...); err != nil {
