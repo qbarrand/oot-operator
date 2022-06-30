@@ -25,18 +25,23 @@ func NewGetter() Getter {
 }
 
 func (getter) ImageExists(ctx context.Context, containerImage string, po ootov1alpha1.PullOptions) (bool, error) {
-	opts := make([]name.Option, 0)
-
-	if po.Insecure {
-		opts = append(opts, name.Insecure)
-	}
-
-	ref, err := name.ParseReference(containerImage, opts...)
+	ref, err := name.ParseReference(containerImage)
 	if err != nil {
 		return false, fmt.Errorf("could not parse the container image name: %v", err)
 	}
 
-	if _, err = remote.Get(ref, remote.WithContext(ctx)); err != nil {
+	opts := []remote.Option{
+		remote.WithContext(ctx),
+	}
+
+	if po.Insecure {
+		rt := http.DefaultTransport.(*http.Transport).Clone()
+		rt.TLSClientConfig.InsecureSkipVerify = true
+
+		remote.WithTransport(rt)
+	}
+
+	if _, err = remote.Get(ref, opts...); err != nil {
 		te := &transport.Error{}
 
 		if errors.As(err, &te) && te.StatusCode == http.StatusNotFound {
