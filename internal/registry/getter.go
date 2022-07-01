@@ -13,6 +13,7 @@ import (
 	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,6 +37,10 @@ func (g *getter) ImageExists(
 	po ootov1alpha1.PullOptions,
 	namespace string,
 ) (bool, error) {
+	logger := ctrl.LoggerFrom(ctx)
+
+	logger.V(1).Info("Parsing container image reference", "name", containerImage)
+
 	ref, err := name.ParseReference(containerImage)
 	if err != nil {
 		return false, fmt.Errorf("could not parse the container image name: %v", err)
@@ -46,6 +51,8 @@ func (g *getter) ImageExists(
 	}
 
 	if po.Insecure {
+		logger.Info("Warning: skipping TLS verification")
+
 		rt := http.DefaultTransport.(*http.Transport).Clone()
 		rt.TLSClientConfig.InsecureSkipVerify = true
 
@@ -58,6 +65,8 @@ func (g *getter) ImageExists(
 	if secretName := po.Secret.Name; secretName != "" {
 		secret := v1.Secret{}
 		key := types.NamespacedName{Namespace: namespace, Name: secretName}
+
+		logger.Info("Using pull secret", "name", key)
 
 		if err := g.kubeClient.Get(ctx, key, &secret); err != nil {
 			return false, fmt.Errorf("could not fetch pull secret %q: %v", key, err)
@@ -73,6 +82,8 @@ func (g *getter) ImageExists(
 			remote.WithAuthFromKeychain(keychain),
 		)
 	}
+
+	logger.V(1).Info("Pull image", "options", opts)
 
 	if _, err = remote.Get(ref, opts...); err != nil {
 		te := &transport.Error{}
