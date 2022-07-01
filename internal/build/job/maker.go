@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -40,14 +41,12 @@ func (m *maker) MakeJob(mod ootov1alpha1.Module, buildConfig *ootov1alpha1.Build
 	}
 
 	if buildConfig.Pull.Insecure {
-		args = append(args, "--insecure-pull")
+		args = append(args, "--skip-tls-verify-pull")
 	}
 
 	if buildConfig.Push.Insecure {
-		args = append(args, "--insecure")
+		args = append(args, "--skip-tls-verify")
 	}
-
-	var one int32 = 1
 
 	const dockerfileVolumeName = "dockerfile"
 
@@ -71,6 +70,62 @@ func (m *maker) MakeJob(mod ootov1alpha1.Module, buildConfig *ootov1alpha1.Build
 		MountPath: "/workspace",
 	}
 
+	volumes := append([]v1.Volume{dockerFileVolume}, MakeSecretVolumes(buildConfig.Secrets)...)
+	volumeMounts := append([]v1.VolumeMount{dockerFileVolumeMount}, MakeSecretVolumeMounts(buildConfig.Secrets)...)
+
+	var initContainers []v1.Container
+
+	if secretName := buildConfig.Push.Secret.Name; secretName != "" {
+		const (
+			pushSecretVolumeName   = "push-secret"
+			dockerConfigVolumeName = "docker-config"
+		)
+
+		pushSecretVolume := v1.Volume{
+			Name: pushSecretVolumeName,
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{SecretName: secretName},
+			},
+		}
+
+		dockerConfigVolume := v1.Volume{
+			Name: dockerConfigVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		}
+
+		volumes = append(volumes, pushSecretVolume, dockerConfigVolume)
+
+		dockerConfigVolumeMount := v1.VolumeMount{
+			Name:      dockerConfigVolumeName,
+			ReadOnly:  true,
+			MountPath: "/kaniko/.docker/",
+		}
+
+		volumeMounts = append(volumeMounts, dockerConfigVolumeMount)
+
+		convertDockerSecret := v1.Container{
+			Name:      "convert-docker-auth",
+			Image:     "docker.io/stedolan/jq",
+			Command:   []string{"bash", "-c", `jq '{"auths": .}' </mnt/in/.dockercfg >/mnt/out/config.json`},
+			Resources: v1.ResourceRequirements{},
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      pushSecretVolumeName,
+					ReadOnly:  true,
+					MountPath: "/mnt/in",
+				},
+				{
+					Name:      dockerConfigVolumeName,
+					MountPath: "/mnt/out",
+				},
+			},
+		}
+
+		initContainers = append(initContainers, convertDockerSecret)
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: mod.Name + "-build-",
@@ -78,22 +133,26 @@ func (m *maker) MakeJob(mod ootov1alpha1.Module, buildConfig *ootov1alpha1.Build
 			Labels:       labels(mod, targetKernel),
 		},
 		Spec: batchv1.JobSpec{
-			Completions: &one,
+			Completions: pointer.Int32(1),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{"Dockerfile": buildConfig.Dockerfile},
 				},
 				Spec: v1.PodSpec{
+					InitContainers: initContainers,
 					Containers: []v1.Container{
 						{
-							Args:         args,
-							Name:         "kaniko",
-							Image:        "gcr.io/kaniko-project/executor:latest",
-							VolumeMounts: append([]v1.VolumeMount{dockerFileVolumeMount}, MakeSecretVolumeMounts(buildConfig.Secrets)...),
+							Args:  args,
+							Name:  "kaniko",
+							Image: "gcr.io/kaniko-project/executor",
+							SecurityContext: &v1.SecurityContext{
+								RunAsUser: pointer.Int64(0),
+							},
+							VolumeMounts: volumeMounts,
 						},
 					},
 					RestartPolicy: v1.RestartPolicyOnFailure,
-					Volumes:       append([]v1.Volume{dockerFileVolume}, MakeSecretVolumes(buildConfig.Secrets)...),
+					Volumes:       volumes,
 				},
 			},
 		},
