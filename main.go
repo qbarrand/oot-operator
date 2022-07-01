@@ -149,7 +149,7 @@ func main() {
 
 	metricsAPI := metrics.New()
 	metricsAPI.Register()
-	getterAPI := registry.NewGetter()
+	getterAPI := registry.NewGetter(client)
 	helperAPI := build.NewHelper()
 	makerAPI := job.NewMaker(helperAPI, scheme)
 	buildAPI := job.NewBuildManager(client, getterAPI, makerAPI, helperAPI)

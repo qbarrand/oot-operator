@@ -32,6 +32,9 @@ type PullOptions struct {
 
 	// When Insecure is true, images can be pulled from an insecure (plain HTTP) registry.
 	Insecure bool `json:"insecure"`
+
+	// Secret references a pull secret in the current namespace.
+	Secret v1.LocalObjectReference `json:"secret,omitempty"`
 }
 
 type PushOptions struct {
@@ -39,6 +42,9 @@ type PushOptions struct {
 
 	// When Insecure is true, built images can be pushed to an insecure (plain HTTP) registry.
 	Insecure bool `json:"insecure"`
+
+	// Secret references a push secret in the current namespace.
+	Secret v1.LocalObjectReference `json:"secret,omitempty"`
 }
 
 type Build struct {
