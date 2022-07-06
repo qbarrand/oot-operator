@@ -23,6 +23,9 @@ import (
 	"os"
 	"runtime/debug"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2/klogr"
+
 	"github.com/qbarrand/oot-operator/internal/build"
 	"github.com/qbarrand/oot-operator/internal/build/job"
 	"github.com/qbarrand/oot-operator/internal/daemonset"
@@ -30,20 +33,20 @@ import (
 	"github.com/qbarrand/oot-operator/internal/metrics"
 	"github.com/qbarrand/oot-operator/internal/module"
 	"github.com/qbarrand/oot-operator/internal/registry"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog/v2/klogr"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
-	"github.com/qbarrand/oot-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+
+	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
+	"github.com/qbarrand/oot-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -164,6 +167,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&ootov1alpha1.Module{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Module")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
