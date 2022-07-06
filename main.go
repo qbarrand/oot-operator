@@ -168,7 +168,7 @@ func main() {
 	}
 
 	if err = (&ootov1alpha1.Module{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Module")
+		setupLogger.Error(err, "unable to create webhook", "webhook", "Module")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
