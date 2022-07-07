@@ -171,13 +171,6 @@ func (dc *daemonSetGenerator) SetDevicePluginAsDesired(ctx context.Context, ds *
 		constants.ModuleNameLabel: mod.Name,
 	}
 
-	containerVolumeMounts := []v1.VolumeMount{
-		{
-			Name:      kubeletDevicePluginsVolumeName,
-			MountPath: kubeletDevicePluginsPath,
-		},
-	}
-
 	hostPathDirectory := v1.HostPathDirectory
 	dsVolumes := []v1.Volume{
 		{
@@ -191,21 +184,30 @@ func (dc *daemonSetGenerator) SetDevicePluginAsDesired(ctx context.Context, ds *
 		},
 	}
 
-	return dc.constructDaemonSet(ctx, ds, mod, *mod.Spec.DevicePlugin, "device-plugin", "", standardLabels,
-		mod.Spec.Selector, containerVolumeMounts, dsVolumes, true)
+	return dc.constructDaemonSet(
+		ctx,
+		ds,
+		mod,
+		mod.Spec.DevicePlugin.Container,
+		"",
+		standardLabels,
+		mod.Spec.Selector,
+		dsVolumes,
+		true,
+		mod.Spec.DevicePlugin.ServiceAccountName)
 }
 
 func (dc *daemonSetGenerator) constructDaemonSet(ctx context.Context,
 	ds *appsv1.DaemonSet,
 	mod *ootov1alpha1.Module,
 	container v1.Container,
-	containerName string,
 	overrideContainerImage string,
 	labels map[string]string,
 	nodeSelector map[string]string,
-	volumeMounts []v1.VolumeMount,
 	volumes []v1.Volume,
-	privilege bool) error {
+	privilege bool,
+	serviceAccountName string,
+) error {
 
 	existingLabels := ds.GetLabels()
 
@@ -219,12 +221,10 @@ func (dc *daemonSetGenerator) constructDaemonSet(ctx context.Context,
 
 	ds.SetLabels(existingLabels)
 
-	container.Name = containerName
 	if overrideContainerImage != "" {
 		container.Image = overrideContainerImage
 	}
 
-	container.VolumeMounts = append(container.VolumeMounts, volumeMounts...)
 	if privilege {
 		if container.SecurityContext == nil {
 			container.SecurityContext = &v1.SecurityContext{}
@@ -232,7 +232,6 @@ func (dc *daemonSetGenerator) constructDaemonSet(ctx context.Context,
 		container.SecurityContext.Privileged = pointer.Bool(true)
 	}
 
-	containers := []v1.Container{container}
 	volumes = append(volumes, mod.Spec.AdditionalVolumes...)
 
 	ds.Spec = appsv1.DaemonSetSpec{
@@ -241,12 +240,17 @@ func (dc *daemonSetGenerator) constructDaemonSet(ctx context.Context,
 			ObjectMeta: metav1.ObjectMeta{Labels: labels},
 			Spec: v1.PodSpec{
 				NodeSelector:       nodeSelector,
-				Containers:         containers,
-				ServiceAccountName: mod.Spec.ServiceAccountName,
+				Containers:         []v1.Container{container},
+				ServiceAccountName: serviceAccountName,
 				Volumes:            volumes,
 			},
 		},
 	}
+
+	if irs := mod.Spec.ImageRepoSecret; irs.Name != "" {
+		ds.Spec.Template.Spec.ImagePullSecrets = []v1.LocalObjectReference{irs}
+	}
+
 	return controllerutil.SetControllerReference(mod, ds, dc.scheme)
 }
 

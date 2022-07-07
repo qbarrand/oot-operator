@@ -113,6 +113,8 @@ var _ = Describe("SetDriverContainerAsDesired", func() {
 			MountPath: "/some/path",
 		}
 
+		ips := v1.LocalObjectReference{Name: "pull-secret"}
+
 		mod := ootov1alpha1.Module{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: ootov1alpha1.GroupVersion.String(),
@@ -130,6 +132,7 @@ var _ = Describe("SetDriverContainerAsDesired", func() {
 					Image:        devicePluginImage,
 					VolumeMounts: []v1.VolumeMount{dpVolMount},
 				},
+				ImageRepoSecret:    &ips,
 				Selector:           map[string]string{"has-feature-x": "true"},
 				ServiceAccountName: serviceAccountName,
 			},
@@ -192,6 +195,7 @@ var _ = Describe("SetDriverContainerAsDesired", func() {
 								},
 							},
 						},
+						ImagePullSecrets: []v1.LocalObjectReference{ips},
 						NodeSelector: map[string]string{
 							"has-feature-x": "true",
 							kernelLabel:     kernelVersion,
