@@ -99,7 +99,7 @@ func (k *kernelMapper) PrepareKernelMapping(mapping *ootov1alpha1.KernelMapping,
 	substMapping := mapping.DeepCopy()
 	substMapping.ContainerImage = substContainerImage
 
-	return &substMapping, nil
+	return substMapping, nil
 }
 
 func (k *kernelMapper) prepareOSConfigList(osConfig NodeOSConfig) []string {
