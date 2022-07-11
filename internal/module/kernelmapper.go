@@ -96,7 +96,7 @@ func (k *kernelMapper) PrepareKernelMapping(mapping *ootov1alpha1.KernelMapping,
 		return nil, fmt.Errorf("failed to substitute the os config into ContainerImage field: %w", err)
 	}
 
-	substMapping := *mapping
+	substMapping := mapping.DeepCopy()
 	substMapping.ContainerImage = substContainerImage
 
 	return &substMapping, nil
