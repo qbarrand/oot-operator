@@ -291,23 +291,40 @@ spec:
 
     serviceAccountName: some-sa # optional
     volumes: [] # a list of additional volumes
-  driverContainer: # resembles a PodSpec
+  driverContainer:
     # This container will not be privileged by default.
     # It will mount /lib/modules and /usr/lib/modules automatically.
     container:
-      securityContext:
+      modProbe:
+        binary: modprove
+
+        moduleNames: [] # list of modules to be loaded and unloaded with modprobe -a
+
+        dirName: /opt # base directory. modprobe will look for kmods in /opt/lib/modules/${KERNEL_VERSION}
+
+        args: # optional; inserted before the moduleNames
+          load: [] # e.g. -v (although we will likely add that one automatically)
+          unload: []
+
+        rawArgs: # optional; in case users need something really custom
+          load: []
+          unload: []
+
+      sleepCommand: [sleep, infinity] # default
+
+      securityContext: # Should we even allow this?
         capabilities:
           add: [SYS_MODULE] # this is enough in most cases
         seLinuxOptions:
           type: spc_t # probably over-privileged, we should look for something tighter
-      volumeMounts: [ ] # additional volume mounts (optional)
 
       build:
         buildArgs:
-        - name: SOME_AWS_KEY
-          value: SOME_AWS_VALUE
+          - name: SOME_KEY
+            value: SOME_VALUE
         pull:
-          insecure: false
+          insecure: false # default; allows HTTP registries
+          insecureTLSSkipVerify: false # default; allows self-signed registries
         push:
           insecure: false
           name: '${CONTAINER_IMAGE}'
@@ -319,19 +336,6 @@ spec:
 
       kernelMappings:
         - regexp: '^.+\.el8\.x86_64$'
-
-        - literal: 5.16.11-200.fc35.x86_64
-          containerImage: ghcr.io/vendor/driver:v1.2.3-${KERNEL_VERSION}-random-suffix
-
-        - regexp: '^.+\-azure'
-          build: {} # Build using the top-level settings
-
-        - regexp: '^.+\-aws$'
-          build:
-            buildArgs:
-              - name: SOME_AWS_KEY
-                value: SOME_AWS_VALUE
-          containerImage: quay.io/vendor/module-sample:aws
 
         - regexp: '^.+\-gke$'
           build:
@@ -352,34 +356,20 @@ spec:
               - /path/to/module0.ko
               - /path/to/module1.ko
 
-    imageRepoSecrets: # used as imagePullSecrets in the DaemonSet and to pull / push for the build and sign features
-      - name: pull-secret-0
-      - name: pull-secret-1
-
+    imageRepoSecret: one-secret-with-many-creds # used as imagePullSecrets in the DaemonSet and to pull / push for the build and sign features
     serviceAccountName: some-sa # optional
-    volumes: [] # a list of additional volumes
   selector:  # top-level selector
     feature.node.kubernetes.io/cpu-cpuid.VMX: true
 status:
   devicePlugin:
-    # The total number of nodes that should be running the daemon
-    # pod (including nodes correctly running the daemon pod).
-    # More info: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
-    desiredNumberScheduled: 1
-
-    # The number of nodes that should be running the daemon pod and have one
-    # or more of the daemon pod running with a Ready Condition.
-    numberReady: 1
-
-    # The number of nodes that should be running the
-    # daemon pod and have one or more of the daemon pod running and
-    # available (ready for at least spec.minReadySeconds)
-    numberAvailable: 1
+    nodesMatchingSelectorNumber: 1
+    desiredNumber: 1
+    availableNumber: 1
 
   driverContainer:
-    desiredNumberScheduled: 1
-    numberReady: 1
-    numberAvailable: 1
+    nodesMatchingSelectorNumber: 1
+    desiredNumber: 1
+    availableNumber: 1
 ```
 
 ## Reconciliation loop
