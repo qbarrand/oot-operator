@@ -4,6 +4,9 @@ on:
   push:
     tags: ['*']
     branches: [main]
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-push:
@@ -21,6 +24,7 @@ jobs:
           images: ghcr.io/qbarrand/oot-operator
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -33,6 +37,7 @@ jobs:
           images: ghcr.io/qbarrand/oot-operator-bundle
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -45,6 +50,7 @@ jobs:
           images: ghcr.io/qbarrand/oot-operator-catalog
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
