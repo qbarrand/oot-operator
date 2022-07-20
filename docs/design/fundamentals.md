@@ -296,27 +296,19 @@ spec:
     # It will mount /lib/modules and /usr/lib/modules automatically.
     container:
       modProbe:
-        binary: modprove
+        moduleName: ''
 
-        moduleNames: [] # list of modules to be loaded and unloaded with modprobe -a
+        parameters: [] # kernel module parameters
 
         dirName: /opt # base directory. modprobe will look for kmods in /opt/lib/modules/${KERNEL_VERSION}
 
         args: # optional; inserted before the moduleNames
-          load: [] # e.g. -v (although we will likely add that one automatically)
-          unload: []
+          load: [-v] # e.g. -v (although we will likely add that one automatically)
+          unload: [-rv]
 
         rawArgs: # optional; in case users need something really custom
           load: []
           unload: []
-
-      sleepCommand: [sleep, infinity] # default
-
-      securityContext: # Should we even allow this?
-        capabilities:
-          add: [SYS_MODULE] # this is enough in most cases
-        seLinuxOptions:
-          type: spc_t # probably over-privileged, we should look for something tighter
 
       build:
         buildArgs:
@@ -328,6 +320,8 @@ spec:
         push:
           insecure: false
           name: '${CONTAINER_IMAGE}'
+        secrets: # only available during the build of the image
+          - name: some-secret
         dockerfile: |
           FROM some-image
           RUN some-command
@@ -356,7 +350,8 @@ spec:
               - /path/to/module0.ko
               - /path/to/module1.ko
 
-    imageRepoSecret: one-secret-with-many-creds # used as imagePullSecrets in the DaemonSet and to pull / push for the build and sign features
+    imageRepoSecret:  # used as imagePullSecrets in the DaemonSet and to pull / push for the build and sign features
+      name: one-secret-with-many-creds
     serviceAccountName: some-sa # optional
   selector:  # top-level selector
     feature.node.kubernetes.io/cpu-cpuid.VMX: true
