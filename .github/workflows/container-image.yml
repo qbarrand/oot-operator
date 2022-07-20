@@ -105,9 +105,11 @@ jobs:
 
       - name: Build and push catalog
         run: |
-          for tag in ${{ steps.meta-catalog.outputs.tags }}; do
-            export CATALOG_IMG=ghcr.io/qbarrand/oot-operator:$tag
-            make catalog-build catalog-push CATALOG_IMG=ghcr.io/qbarrand/oot-operator:$tag
+          echo "${{ steps.meta-catalog.outputs.tags }}"
+          echo ${{ steps.meta-catalog.outputs.tags }}
+
+          for img in ${{ steps.meta-catalog.outputs.tags }}; do
+            make catalog-build catalog-push CATALOG_IMG=$img
           done
         env:
           BUNDLE_IMG: ghcr.io/qbarrand/oot-operator-bundle@${{ steps.build-push-bundle.outputs.digest }}
