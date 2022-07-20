@@ -105,10 +105,11 @@ jobs:
 
       - name: Build and push catalog
         run: |
-          echo "${{ steps.meta-catalog.outputs.tags }}"
-          echo ${{ steps.meta-catalog.outputs.tags }}
+          cat >tags <<EOF
+          ${{ steps.meta-catalog.outputs.tags }}
+          EOF
 
-          for img in ${{ steps.meta-catalog.outputs.tags }}; do
+          for img in $(cat tags); do
             make catalog-build catalog-push CATALOG_IMG=$img
           done
         env:
