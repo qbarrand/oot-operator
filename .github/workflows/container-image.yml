@@ -103,7 +103,10 @@ jobs:
           labels: ${{ steps.meta-bundle.outputs.labels }}
 
       - name: Build and push catalog
-        run: make catalog-build && make catalog-push
+        run: |
+          for tag in ${{ steps.meta-catalog.outputs.tags }}; do
+            export CATALOG_IMG=ghcr.io/qbarrand/oot-operator:$tag
+            make catalog-build && make catalog-push
+          done
         env:
           BUNDLE_IMG: ghcr.io/qbarrand/oot-operator-bundle@${{ steps.build-push-bundle.outputs.digest }}
-          VERSION: ${{ github.ref_name }}
