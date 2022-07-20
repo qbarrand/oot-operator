@@ -104,9 +104,9 @@ jobs:
 
       - name: Build and push catalog
         run: |
-          echo ${{ steps.meta-catalog.outputs.tags }}
-          echo "${{ steps.meta-catalog.outputs.tags }}"
-          for tag in ${{ steps.meta-catalog.outputs.tags }}; do
+          TAGS=$(echo "${{ steps.meta-catalog.outputs.tags }}" | tr '\n' ' ' | awk '{$1=$1};1')
+
+          for tag in $TAGS; do
             export CATALOG_IMG=ghcr.io/qbarrand/oot-operator:$tag
             make catalog-build && make catalog-push
           done
