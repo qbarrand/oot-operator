@@ -48,6 +48,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ghcr.io/qbarrand/oot-operator-catalog
+          sep-tags: ' '
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -104,11 +105,9 @@ jobs:
 
       - name: Build and push catalog
         run: |
-          TAGS=$(echo "${{ steps.meta-catalog.outputs.tags }}" | tr '\n' ' ' | awk '{$1=$1};1')
-
-          for tag in $TAGS; do
+          for tag in ${{ steps.meta-catalog.outputs.tags }}; do
             export CATALOG_IMG=ghcr.io/qbarrand/oot-operator:$tag
-            make catalog-build && make catalog-push
+            make catalog-build catalog-push CATALOG_IMG=ghcr.io/qbarrand/oot-operator:$tag
           done
         env:
           BUNDLE_IMG: ghcr.io/qbarrand/oot-operator-bundle@${{ steps.build-push-bundle.outputs.digest }}
