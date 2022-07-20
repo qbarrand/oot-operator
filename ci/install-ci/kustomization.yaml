@@ -20,8 +20,8 @@ patchesStrategicMerge:
       template:
         spec:
           nodeSelector:
-            # This is the node we're building the ooto:local image on
-            kubernetes.io/hostname: minikube
+            - $patch: delete
+              node-role.kubernetes.io/master: ''
           containers:
             - name: manager
               imagePullPolicy: Never
