@@ -19,9 +19,8 @@ for resource in $(oc get all -n $NS --no-headers | awk '{print $1}'); do
   describeFile="${OUTPUT_DIR}/${type}/${name}.yaml"
   oc -n $NS describe "$resource" > "$describeFile"
 
-  echo "Collecting logs from ${resource}"
-  logsFile="${OUTPUT_DIR}/${type}/${name}.log"
-  oc -n $NS logs "$resource" > "$logsFile"
-
 #  echo "Collecting CRDs from ${resource}"
 done
+
+echo "Collecting logs from 'deployment/oot-operator-controller-manager'"
+oc -n $NS logs "deployment/oot-operator-controller-manager" > "${OUTPUT_DIR}/oot-operator-controller-manager.log"
