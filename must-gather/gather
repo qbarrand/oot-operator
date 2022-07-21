@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+
+NS=oot-operator-system
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+OUTPUT_DIR="must-gather"
+
+for resource in $(oc get all -n $NS --no-headers | awk '{print $1}'); do
+
+  type=$(echo "$resource" | cut -d'/' -f1 )
+  name=$(echo "$resource" | cut -d'/' -f2 )
+
+  dir="${OUTPUT_DIR}/${TIMESTAMP}/${type}"
+  mkdir -p "$dir"
+
+  echo "Inspecting ${resource}"
+  inspectDir="${dir}/inspect"
+  oc adm inspect -n "$NS" "$resource" --dest-dir="$inspectDir"
+
+  echo "Collecting information for ${resource}"
+  describeFile="${dir}/${name}.yaml"
+  oc -n $NS describe "$resource" > "$describeFile"
+
+  echo "Collecting logs from ${resource}"
+  logsFile="${dir}/${name}.log"
+  oc -n $NS logs "$resource" > "$logsFile"
+
+#  echo "Collecting CRDs from ${resource}"
+done
