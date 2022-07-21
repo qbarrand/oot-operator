@@ -9,18 +9,16 @@ for resource in $(oc get all -n $NS --no-headers | awk '{print $1}'); do
   type=$(echo "$resource" | cut -d'/' -f1 )
   name=$(echo "$resource" | cut -d'/' -f2 )
 
-  mkdir -p "${OUTPUT_DIR}/${type}"
-
   echo "Inspecting ${resource}"
-  inspectDir="${OUTPUT_DIR}/${type}/inspect"
-  oc adm inspect -n "$NS" "$resource" --dest-dir="$inspectDir"
+  oc adm inspect -n "$NS" "$resource" --dest-dir="$OUTPUT_DIR/inspect"
 
   echo "Collecting information for ${resource}"
-  describeFile="${OUTPUT_DIR}/${type}/${name}.yaml"
+  describeFile="${OUTPUT_DIR}/${type}_${name}.yaml"
   oc -n $NS describe "$resource" > "$describeFile"
-
-#  echo "Collecting CRDs from ${resource}"
 done
 
 echo "Collecting logs from 'deployment/oot-operator-controller-manager'"
 oc -n $NS logs "deployment/oot-operator-controller-manager" > "${OUTPUT_DIR}/oot-operator-controller-manager.log"
+
+echo "Inspecting modules.ooto.sigs.k8s.io in all the namespaces"
+oc adm inspect -A crd/modules.ooto.sigs.k8s.io  --dest-dir="$OUTPUT_DIR/inspect"
