@@ -2,26 +2,25 @@
 
 NS=oot-operator-system
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTPUT_DIR="must-gather"
+OUTPUT_DIR="must-gather/${TIMESTAMP}"
 
 for resource in $(oc get all -n $NS --no-headers | awk '{print $1}'); do
 
   type=$(echo "$resource" | cut -d'/' -f1 )
   name=$(echo "$resource" | cut -d'/' -f2 )
 
-  dir="${OUTPUT_DIR}/${TIMESTAMP}/${type}"
-  mkdir -p "$dir"
+  mkdir -p "${OUTPUT_DIR}/${type}"
 
   echo "Inspecting ${resource}"
-  inspectDir="${dir}/inspect"
+  inspectDir="${OUTPUT_DIR}/${type}/inspect"
   oc adm inspect -n "$NS" "$resource" --dest-dir="$inspectDir"
 
   echo "Collecting information for ${resource}"
-  describeFile="${dir}/${name}.yaml"
+  describeFile="${OUTPUT_DIR}/${type}/${name}.yaml"
   oc -n $NS describe "$resource" > "$describeFile"
 
   echo "Collecting logs from ${resource}"
-  logsFile="${dir}/${name}.log"
+  logsFile="${OUTPUT_DIR}/${type}/${name}.log"
   oc -n $NS logs "$resource" > "$logsFile"
 
 #  echo "Collecting CRDs from ${resource}"
