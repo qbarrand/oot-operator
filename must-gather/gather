@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 NS="${NS:-oot-operator-system}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
