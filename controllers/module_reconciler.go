@@ -48,6 +48,7 @@ type ModuleReconciler struct {
 	client.Client
 
 	buildAPI         build.Manager
+	signAPI          build.Manager
 	daemonAPI        daemonset.DaemonSetCreator
 	kernelAPI        module.KernelMapper
 	metricsAPI       metrics.Metrics
@@ -58,6 +59,7 @@ type ModuleReconciler struct {
 func NewModuleReconciler(
 	client client.Client,
 	buildAPI build.Manager,
+	signAPI build.Manager,
 	daemonAPI daemonset.DaemonSetCreator,
 	kernelAPI module.KernelMapper,
 	metricsAPI metrics.Metrics,
@@ -66,6 +68,7 @@ func NewModuleReconciler(
 	return &ModuleReconciler{
 		Client:           client,
 		buildAPI:         buildAPI,
+		signAPI:          signAPI,
 		daemonAPI:        daemonAPI,
 		kernelAPI:        kernelAPI,
 		metricsAPI:       metricsAPI,
@@ -124,6 +127,16 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		if requeue {
 			logger.Info("Build requires a requeue; skipping handling driver container for now", "kernelVersion", kernelVersion, "image", m)
+			res.Requeue = true
+			continue
+		}
+
+		requeue, err = r.handleSigning(ctx, mod, m, kernelVersion)
+		if err != nil {
+			return res, fmt.Errorf("failed to handle signing for kernel version %s: %w", kernelVersion, err)
+		}
+		if requeue {
+			logger.Info("Signing requires a requeue; skipping handling driver container for now", "kernelVersion", kernelVersion, "image", m)
 			res.Requeue = true
 			continue
 		}
@@ -234,6 +247,37 @@ func (r *ModuleReconciler) handleBuild(ctx context.Context,
 	buildCtx := log.IntoContext(ctx, logger)
 
 	buildRes, err := r.buildAPI.Sync(buildCtx, *mod, *km, kernelVersion)
+	if err != nil {
+		return false, fmt.Errorf("could not synchronize the build: %w", err)
+	}
+
+	switch buildRes.Status {
+	case build.StatusCreated:
+		r.metricsAPI.SetCompletedStage(mod.Name, mod.Namespace, kernelVersion, metrics.BuildStage, false)
+	case build.StatusCompleted:
+		r.metricsAPI.SetCompletedStage(mod.Name, mod.Namespace, kernelVersion, metrics.BuildStage, true)
+	}
+
+	return buildRes.Requeue, nil
+}
+
+
+func (r *ModuleReconciler) handleSigning(ctx context.Context,
+	mod *ootov1alpha1.Module,
+	km *ootov1alpha1.KernelMapping,
+	kernelVersion string) (bool, error) {
+
+	//if mod.Spec.Sign == nil && km.Sign == nil {
+	if km.Sign == nil {
+		return false, nil
+	}
+
+	// [TODO] check access to the image - execute build only if needed (image is inaccessible)
+	logger := log.FromContext(ctx).WithValues("kernel version", kernelVersion, "image", km.ContainerImage)
+	buildCtx := log.IntoContext(ctx, logger)
+
+	//fmt.Printf("handleSigning %+v  == %+v\n",r,r.signAPI)
+	buildRes, err := r.signAPI.Sync(buildCtx, *mod, *km, kernelVersion)
 	if err != nil {
 		return false, fmt.Errorf("could not synchronize the build: %w", err)
 	}

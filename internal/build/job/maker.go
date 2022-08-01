@@ -16,7 +16,8 @@ import (
 //go:generate mockgen -source=maker.go -package=job -destination=mock_maker.go
 
 type Maker interface {
-	MakeJob(mod ootov1alpha1.Module, buildConfig *ootov1alpha1.Build, targetKernel, containerImage string) (*batchv1.Job, error)
+	MakeJob(mod ootov1alpha1.Module, m *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error)
+	PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions
 }
 
 type maker struct {
@@ -28,7 +29,15 @@ func NewMaker(helper build.Helper, scheme *runtime.Scheme) Maker {
 	return &maker{helper: helper, scheme: scheme}
 }
 
-func (m *maker) MakeJob(mod ootov1alpha1.Module, buildConfig *ootov1alpha1.Build, targetKernel, containerImage string) (*batchv1.Job, error) {
+func (m *maker) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions{
+	return km.Build.Pull
+}
+
+func (m *maker) MakeJob(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error) {
+
+
+	buildConfig := m.helper.GetRelevantBuild(mod, *km)
+
 	args := []string{"--destination", containerImage}
 
 	buildArgs := m.helper.ApplyBuildArgOverrides(

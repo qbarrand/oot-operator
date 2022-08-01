@@ -65,7 +65,7 @@ func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targ
 func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ootov1alpha1.KernelMapping, targetKernel string) (build.Result, error) {
 	logger := log.FromContext(ctx)
 
-	buildConfig := jbm.helper.GetRelevantBuild(mod, m)
+	//buildConfig := jbm.helper.GetRelevantBuild(mod, m)
 
 	var registryAuthGetter auth.RegistryAuthGetter
 
@@ -76,7 +76,11 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 		}
 		registryAuthGetter = auth.NewRegistryAuthGetter(jbm.client, namespacedName)
 	}
-	imageAvailable, err := jbm.registry.ImageExists(ctx, m.ContainerImage, buildConfig.Pull, registryAuthGetter)
+	logger.Info("try to pull image", m.ContainerImage)
+	//imageAvailable, err := jbm.registry.ImageExists(ctx, m.ContainerImage, buildConfig.Pull, registryAuthGetter)
+	pulloptions := jbm.maker.PullOptions(m)
+
+	imageAvailable, err := jbm.registry.ImageExists(ctx, m.ContainerImage, pulloptions, registryAuthGetter)
 	if err != nil {
 		return build.Result{}, fmt.Errorf("could not check if the image is available: %v", err)
 	}
@@ -95,7 +99,8 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 
 		logger.Info("Creating job")
 
-		job, err = jbm.maker.MakeJob(mod, buildConfig, targetKernel, m.ContainerImage)
+		//job, err = jbm.maker.MakeJob(mod, buildConfig, targetKernel, m.ContainerImage)
+		job, err = jbm.maker.MakeJob(mod, &m, targetKernel, m.ContainerImage)
 		if err != nil {
 			return build.Result{}, fmt.Errorf("could not make Job: %v", err)
 		}

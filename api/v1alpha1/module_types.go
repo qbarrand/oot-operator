@@ -72,6 +72,30 @@ type Build struct {
 	Secrets []v1.LocalObjectReference `json:"secrets"`
 }
 
+
+type Sign struct {
+	// UnsignedImage contains the name of an image containing kernel modules to sign
+	UnsignedImage string `json:"unsignedImage"`
+
+	// SignedImage contains the name of the image to produce containing the signed kmods
+	SignedImage string `json:"signedimage"`
+
+	KeySecret  *v1.LocalObjectReference `json:"keySecret"`
+	CertSecret *v1.LocalObjectReference `json:"certSecret"`
+	FilesToSign []string `json:"filesToSign"`
+	ImagePullSecret *v1.LocalObjectReference `json:"imagePullSecret,omitempty"`
+	// +optional
+	// Pull contains settings determining how to check if the DriverContainer image already exists.
+	Pull PullOptions `json:"pull"`
+	ImagePushSecret *v1.LocalObjectReference `json:"imagePushSecret,omitempty"`
+	// +optional
+	// Push contains settings determining how to push a built DriverContainer image.
+	Push PushOptions `json:"push"`
+
+}
+
+
+
 // KernelMapping pairs kernel versions with a DriverContainer image.
 // Kernel versions can be matched literally or using a regular expression.
 type KernelMapping struct {
@@ -79,6 +103,10 @@ type KernelMapping struct {
 	// +optional
 	// Build enables in-cluster builds for this mapping and allows overriding the Module's build settings.
 	Build *Build `json:"build"`
+
+	// +optional
+	// Sign enables in-cluster builds for this mapping and allows overriding the Module's build settings.
+	Sign *Sign `json:"sign"`
 
 	// ContainerImage is the name of the DriverContainer image that should be used to deploy the module.
 	ContainerImage string `json:"containerImage"`

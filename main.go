@@ -154,11 +154,13 @@ func main() {
 	helperAPI := build.NewHelper()
 	makerAPI := job.NewMaker(helperAPI, scheme)
 	buildAPI := job.NewBuildManager(client, registryAPI, makerAPI, helperAPI)
+	signerAPI := job.NewSigner(helperAPI, scheme)
+	signAPI := job.NewBuildManager(client, registryAPI, signerAPI, helperAPI)
 	daemonAPI := daemonset.NewCreator(client, kernelLabel, scheme)
 	kernelAPI := module.NewKernelMapper()
 	statusUpdaterAPI := module.NewStatusUpdater(client, daemonAPI, metricsAPI)
 
-	mc := controllers.NewModuleReconciler(client, buildAPI, daemonAPI, kernelAPI, metricsAPI, filter, statusUpdaterAPI)
+	mc := controllers.NewModuleReconciler(client, buildAPI, signAPI, daemonAPI, kernelAPI, metricsAPI, filter, statusUpdaterAPI)
 
 	if err = mc.SetupWithManager(mgr, kernelLabel); err != nil {
 		setupLogger.Error(err, "unable to create controller", "controller", "Module")
