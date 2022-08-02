@@ -41,6 +41,15 @@ func labels(mod ootov1alpha1.Module, targetKernel string) map[string]string {
 	}
 }
 
+func (jbm *jobManager) GetName() string {
+	return jbm.maker.GetName()
+}
+
+func (jbm *jobManager) ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool{
+	return jbm.maker.ShouldRun(mod, km)
+}
+
+
 func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targetKernel string) (*batchv1.Job, error) {
 	jobList := batchv1.JobList{}
 

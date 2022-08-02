@@ -23,13 +23,26 @@ type Maker interface {
 */
 
 type maker struct {
+	name string
 	helper build.Helper
 	scheme *runtime.Scheme
 }
 
 func NewMaker(helper build.Helper, scheme *runtime.Scheme) Maker {
-	return &maker{helper: helper, scheme: scheme}
+	return &maker{name: "Build", helper: helper, scheme: scheme}
 }
+
+func (m *maker) GetName() string {
+	return m.name
+}
+
+func (m *maker) ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool{
+	if mod.Spec.Build == nil && km.Build == nil {
+		return false
+	}
+	return true
+}
+
 
 func (m *maker) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions{
 	return km.Build.Pull

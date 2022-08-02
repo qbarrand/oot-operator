@@ -17,12 +17,24 @@ import (
 //go:generate mockgen -source=maker.go -package=job -destination=mock_maker.go
 
 type signer struct {
+	name string
 	helper build.Helper
 	scheme *runtime.Scheme
 }
 
 func NewSigner(helper build.Helper, scheme *runtime.Scheme) Maker {
-	return &signer{helper: helper, scheme: scheme}
+	return &signer{name: "Sign", helper: helper, scheme: scheme}
+}
+
+func (m *signer) GetName() string {
+	return m.name
+}
+
+func (m *signer) ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool{
+	if km.Sign == nil {
+		return false
+	}
+	return true
 }
 
 func (m *signer) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions{
