@@ -30,11 +30,15 @@ func (m *signer) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOpt
 }
 
 func (m *signer) MakeJob(mod ootov1alpha1.Module,  km *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error) {
-	 //m *ootov1alpha1.KernelMapping 
-	 signConfig := km.Sign
-	 //*ootov1alpha1.Sign
+	var args []string
 
-	args := []string{"-signedimage", containerImage}
+	signConfig := km.Sign
+
+	if signConfig.SignedImage != "" {
+		args = []string{"-signedimage", signConfig.SignedImage}
+	}else{
+		args = []string{"-signedimage", containerImage}
+	}
 
 	args = append(args, "-unsignedimage", signConfig.UnsignedImage)
 	args = append(args, "-pullsecret", "/docker_config/config.json") 
