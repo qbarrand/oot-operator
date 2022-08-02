@@ -73,7 +73,7 @@ var _ = Describe("JobManager", func() {
 				helper.EXPECT().GetRelevantBuild(gomock.Any(), km).Return(km.Build),
 				registry.EXPECT().ImageExists(ctx, imageName, po, gomock.Any()).Return(false, errors.New("random error")),
 			)
-			mgr := NewBuildManager(nil, registry, maker, helper)
+			mgr := NewJobManager(nil, registry, maker, helper)
 
 			_, err := mgr.Sync(ctx, ootov1alpha1.Module{}, km, "")
 			Expect(err).To(HaveOccurred())
@@ -87,7 +87,7 @@ var _ = Describe("JobManager", func() {
 				registry.EXPECT().ImageExists(ctx, imageName, po, gomock.Any()).Return(true, nil),
 			)
 
-			mgr := NewBuildManager(nil, registry, maker, helper)
+			mgr := NewJobManager(nil, registry, maker, helper)
 
 			Expect(
 				mgr.Sync(ctx, ootov1alpha1.Module{}, km, ""),
@@ -128,7 +128,7 @@ var _ = Describe("JobManager", func() {
 					registry.EXPECT().ImageExists(ctx, imageName, po, gomock.Any()).Return(false, nil),
 				)
 
-				mgr := NewBuildManager(clnt, registry, maker, helper)
+				mgr := NewJobManager(clnt, registry, maker, helper)
 
 				res, err := mgr.Sync(ctx, mod, km, kernelVersion)
 
@@ -154,7 +154,7 @@ var _ = Describe("JobManager", func() {
 			)
 			clnt.EXPECT().List(ctx, gomock.Any(), gomock.Any(), gomock.Any())
 
-			mgr := NewBuildManager(clnt, registry, maker, helper)
+			mgr := NewJobManager(clnt, registry, maker, helper)
 
 			Expect(
 				mgr.Sync(ctx, mod, km, kernelVersion),
@@ -188,7 +188,7 @@ var _ = Describe("JobManager", func() {
 				clnt.EXPECT().Create(ctx, &j),
 			)
 
-			mgr := NewBuildManager(clnt, registry, maker, helper)
+			mgr := NewJobManager(clnt, registry, maker, helper)
 
 			Expect(
 				mgr.Sync(ctx, mod, km, kernelVersion),
@@ -229,7 +229,7 @@ var _ = Describe("JobManager", func() {
 				clnt.EXPECT().Create(ctx, &j),
 			)
 
-			mgr := NewBuildManager(clnt, registry, maker, helper)
+			mgr := NewJobManager(clnt, registry, maker, helper)
 
 			Expect(
 				mgr.Sync(ctx, mod, km, kernelVersion),

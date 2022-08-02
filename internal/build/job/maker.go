@@ -15,10 +15,12 @@ import (
 
 //go:generate mockgen -source=maker.go -package=job -destination=mock_maker.go
 
+/*
 type Maker interface {
 	MakeJob(mod ootov1alpha1.Module, m *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error)
 	PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions
 }
+*/
 
 type maker struct {
 	helper build.Helper

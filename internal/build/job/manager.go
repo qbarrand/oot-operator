@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var errNoMatchingBuild = errors.New("no matching build")
+var errNoMatchingJob = errors.New("no matching job")
 
 type jobManager struct {
 	client   client.Client
@@ -25,7 +25,7 @@ type jobManager struct {
 	helper   build.Helper
 }
 
-func NewBuildManager(client client.Client, registry registry.Registry, maker Maker, helper build.Helper) *jobManager {
+func NewJobManager(client client.Client, registry registry.Registry, maker Maker, helper build.Helper) *jobManager {
 	return &jobManager{
 		client:   client,
 		registry: registry,
@@ -54,7 +54,7 @@ func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targ
 	}
 
 	if n := len(jobList.Items); n == 0 {
-		return nil, errNoMatchingBuild
+		return nil, errNoMatchingJob
 	} else if n > 1 {
 		return nil, fmt.Errorf("expected 0 or 1 job, got %d", n)
 	}
@@ -64,8 +64,6 @@ func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targ
 
 func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ootov1alpha1.KernelMapping, targetKernel string) (build.Result, error) {
 	logger := log.FromContext(ctx)
-
-	//buildConfig := jbm.helper.GetRelevantBuild(mod, m)
 
 	var registryAuthGetter auth.RegistryAuthGetter
 
@@ -93,8 +91,8 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 
 	job, err := jbm.getJob(ctx, mod, targetKernel)
 	if err != nil {
-		if !errors.Is(err, errNoMatchingBuild) {
-			return build.Result{}, fmt.Errorf("error getting the build: %v", err)
+		if !errors.Is(err, errNoMatchingJob) {
+			return build.Result{}, fmt.Errorf("error getting the job: %v", err)
 		}
 
 		logger.Info("Creating job")
