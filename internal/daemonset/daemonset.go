@@ -274,11 +274,11 @@ func CopyMapStringString(m map[string]string) map[string]string {
 }
 
 func getDriverContainerNodeLabel(moduleName string) string {
-	return fmt.Sprintf("oot.node.kubernetes.io/%s.ready", moduleName)
+	return fmt.Sprintf("kmm.node.kubernetes.io/%s.ready", moduleName)
 }
 
 func getDevicePluginNodeLabel(moduleName string) string {
-	return fmt.Sprintf("oot.node.kubernetes.io/%s.device-plugin-ready", moduleName)
+	return fmt.Sprintf("kmm.node.kubernetes.io/%s.device-plugin-ready", moduleName)
 }
 
 func IsDevicePluginKernelVersion(kernelVersion string) bool {

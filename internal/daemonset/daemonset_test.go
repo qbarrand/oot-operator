@@ -281,7 +281,7 @@ var _ = Describe("SetDriverContainerAsDesired", func() {
 					Name:      "ds1",
 					Namespace: namespace,
 					Labels: map[string]string{
-						"oot.node.kubernetes.io/module.name": moduleName,
+						"kmm.node.kubernetes.io/module.name": moduleName,
 						kernelLabel:                          kernelVersion,
 					},
 				},
@@ -292,7 +292,7 @@ var _ = Describe("SetDriverContainerAsDesired", func() {
 					Name:      "ds2",
 					Namespace: namespace,
 					Labels: map[string]string{
-						"oot.node.kubernetes.io/module.name": moduleName,
+						"kmm.node.kubernetes.io/module.name": moduleName,
 						kernelLabel:                          otherKernelVersion,
 					},
 				},
@@ -562,7 +562,7 @@ var _ = Describe("ModuleDaemonSetsByKernelVersion", func() {
 
 	It("should return an error if two DaemonSets are present for the same kernel", func() {
 		dsLabels := map[string]string{
-			"oot.node.kubernetes.io/module.name": moduleName,
+			"kmm.node.kubernetes.io/module.name": moduleName,
 			kernelLabel:                          kernelVersion,
 		}
 
@@ -603,7 +603,7 @@ var _ = Describe("ModuleDaemonSetsByKernelVersion", func() {
 				Name:      "ds1",
 				Namespace: namespace,
 				Labels: map[string]string{
-					"oot.node.kubernetes.io/module.name": moduleName,
+					"kmm.node.kubernetes.io/module.name": moduleName,
 					kernelLabel:                          kernelVersion,
 				},
 			},
@@ -614,7 +614,7 @@ var _ = Describe("ModuleDaemonSetsByKernelVersion", func() {
 				Name:      "ds2",
 				Namespace: namespace,
 				Labels: map[string]string{
-					"oot.node.kubernetes.io/module.name": moduleName,
+					"kmm.node.kubernetes.io/module.name": moduleName,
 					kernelLabel:                          otherKernelVersion,
 				},
 			},
@@ -644,7 +644,7 @@ var _ = Describe("ModuleDaemonSetsByKernelVersion", func() {
 				Name:      "ds1",
 				Namespace: namespace,
 				Labels: map[string]string{
-					"oot.node.kubernetes.io/module.name": moduleName,
+					"kmm.node.kubernetes.io/module.name": moduleName,
 					kernelLabel:                          kernelVersion,
 				},
 			},
@@ -655,7 +655,7 @@ var _ = Describe("ModuleDaemonSetsByKernelVersion", func() {
 				Name:      "ds2",
 				Namespace: namespace,
 				Labels: map[string]string{
-					"oot.node.kubernetes.io/module.name": moduleName,
+					"kmm.node.kubernetes.io/module.name": moduleName,
 				},
 			},
 		}

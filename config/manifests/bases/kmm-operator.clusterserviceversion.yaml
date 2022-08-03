@@ -4,7 +4,7 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: oot-operator.v0.0.0
+  name: kernel-module-management.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -13,7 +13,7 @@ spec:
     - description: Module is the Schema for the modules API
       displayName: Module
       kind: Module
-      name: modules.ooto.sigs.k8s.io
+      name: modules.kmm.sigs.k8s.io
       version: v1alpha1
   description: Kubernetes operator managing out of tree kernel modules
   displayName: OOT Operator
@@ -39,14 +39,16 @@ spec:
   - kernel
   - module
   - modules
+  - kmm
+  - kmmo
   links:
-  - name: OOT Operator
-    url: https://github.com/qbarrand/oot-operator
+  - name: Kernel Module Management
+    url: https://github.com/rh-ecosystem-edge/kernel-module-management
   maintainers:
   - email: quba@redhat.com
     name: Quentin Barrand
   maturity: alpha
   provider:
     name: Community
-    url: https://github.com/qbarrand/oot-operator
+    url: https://github.com/rh-ecosystem-edge/kernel-module-management
   version: 0.0.0

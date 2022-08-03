@@ -51,7 +51,7 @@ import (
 
 const (
 	NFDKernelLabelingMethod  = "nfd"
-	OOTOKernelLabelingMethod = "ooto"
+	OOTOKernelLabelingMethod = "kmmo"
 
 	KernelLabelingMethodEnvVar = "KERNEL_LABELING_METHOD"
 )
@@ -128,7 +128,7 @@ func main() {
 
 	switch kernelLabelingMethod {
 	case OOTOKernelLabelingMethod:
-		kernelLabel = "oot.node.kubernetes.io/kernel-version.full"
+		kernelLabel = "kmm.node.kubernetes.io/kernel-version.full"
 
 		nodeKernelReconciler := controllers.NewNodeKernelReconciler(client, kernelLabel, filter)
 
