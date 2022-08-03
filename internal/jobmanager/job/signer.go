@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
-	"github.com/qbarrand/oot-operator/internal/build"
+	"github.com/qbarrand/oot-operator/internal/jobmanager"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,12 +17,24 @@ import (
 //go:generate mockgen -source=maker.go -package=job -destination=mock_maker.go
 
 type signer struct {
+	name string
 	helper build.Helper
 	scheme *runtime.Scheme
 }
 
-func NewSigner(helper build.Helper, scheme *runtime.Scheme) Maker {
-	return &signer{helper: helper, scheme: scheme}
+func NewSigner(helper build.Helper, scheme *runtime.Scheme) Job {
+	return &signer{name: "Sign", helper: helper, scheme: scheme}
+}
+
+func (m *signer) GetName() string {
+	return m.name
+}
+
+func (m *signer) ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool{
+	if km.Sign == nil {
+		return false
+	}
+	return true
 }
 
 func (m *signer) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions{
@@ -101,7 +113,7 @@ func (m *signer) MakeJob(mod ootov1alpha1.Module,  km *ootov1alpha1.KernelMappin
 func (m *signer) makeImageSigningSecretVolume(secretRef *v1.LocalObjectReference, key string, path string) v1.Volume {
 
 	return v1.Volume{
-		Name: volumeNameFromSecretRef(*secretRef),
+		Name: m.volumeNameFromSecretRef(*secretRef),
 		VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{
 				SecretName: secretRef.Name,
@@ -119,7 +131,7 @@ func (m *signer) makeImageSigningSecretVolume(secretRef *v1.LocalObjectReference
 func (m *signer) makeImageSigningSecretVolumeMount(secretRef *v1.LocalObjectReference, mountpoint string) v1.VolumeMount {
 
 	return v1.VolumeMount{
-		Name:      volumeNameFromSecretRef(*secretRef),
+		Name:      m.volumeNameFromSecretRef(*secretRef),
 		ReadOnly:  true,
 		MountPath: mountpoint,
 	}
@@ -134,7 +146,7 @@ func (m *signer) makeImagePullSecretVolume(secretRef *v1.LocalObjectReference) v
 	}
 
 	return v1.Volume{
-		Name: volumeNameFromSecretRef(*secretRef),
+		Name: m.volumeNameFromSecretRef(*secretRef),
 		VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{
 				SecretName: secretRef.Name,
@@ -156,10 +168,14 @@ func (m *signer) makeImagePullSecretVolumeMount(secretRef *v1.LocalObjectReferen
 	}
 
 	return v1.VolumeMount{
-		Name:      volumeNameFromSecretRef(*secretRef),
+		Name:      m.volumeNameFromSecretRef(*secretRef),
 		ReadOnly:  true,
 		MountPath: "/docker_config",
 	}
 }
 
+
+func (m *signer) volumeNameFromSecretRef(ref v1.LocalObjectReference) string {
+	return "secret-" + ref.Name
+}
 

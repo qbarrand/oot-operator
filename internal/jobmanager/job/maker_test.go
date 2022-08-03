@@ -34,7 +34,7 @@ var _ = Describe("MakeJob", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		mh = build.NewMockHelper(ctrl)
-		m = NewMaker(mh, scheme)
+		m = NewBuilder(mh, scheme)
 	})
 
 	AfterEach(func() {

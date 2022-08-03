@@ -23,8 +23,8 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/qbarrand/oot-operator/internal/build"
-	"github.com/qbarrand/oot-operator/internal/build/job"
+	"github.com/qbarrand/oot-operator/internal/jobmanager"
+	"github.com/qbarrand/oot-operator/internal/jobmanager/job"
 	"github.com/qbarrand/oot-operator/internal/daemonset"
 	"github.com/qbarrand/oot-operator/internal/filter"
 	"github.com/qbarrand/oot-operator/internal/metrics"
@@ -152,15 +152,20 @@ func main() {
 	metricsAPI.Register()
 	registryAPI := registry.NewRegistry()
 	helperAPI := build.NewHelper()
-	makerAPI := job.NewMaker(helperAPI, scheme)
-	buildAPI := job.NewJobManager(client, registryAPI, makerAPI, helperAPI)
+
+
+	buildAPI := make([]build.Manager, 2)
+
+	makerAPI := job.NewBuilder(helperAPI, scheme)
 	signerAPI := job.NewSigner(helperAPI, scheme)
-	signAPI := job.NewJobManager(client, registryAPI, signerAPI, helperAPI)
+	buildAPI[0] = job.NewJobManager(client, registryAPI, makerAPI, helperAPI)
+	buildAPI[1] = job.NewJobManager(client, registryAPI, signerAPI, helperAPI)
+
 	daemonAPI := daemonset.NewCreator(client, kernelLabel, scheme)
 	kernelAPI := module.NewKernelMapper()
 	statusUpdaterAPI := module.NewStatusUpdater(client, daemonAPI, metricsAPI)
 
-	mc := controllers.NewModuleReconciler(client, buildAPI, signAPI, daemonAPI, kernelAPI, metricsAPI, filter, statusUpdaterAPI)
+	mc := controllers.NewModuleReconciler(client, buildAPI, daemonAPI, kernelAPI, metricsAPI, filter, statusUpdaterAPI)
 
 	if err = mc.SetupWithManager(mgr, kernelLabel); err != nil {
 		setupLogger.Error(err, "unable to create controller", "controller", "Module")

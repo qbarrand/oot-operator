@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
-	"github.com/qbarrand/oot-operator/internal/build"
+	"github.com/qbarrand/oot-operator/internal/jobmanager"
 	"github.com/qbarrand/oot-operator/internal/daemonset"
 	"github.com/qbarrand/oot-operator/internal/filter"
 	"github.com/qbarrand/oot-operator/internal/metrics"
@@ -47,8 +47,7 @@ import (
 type ModuleReconciler struct {
 	client.Client
 
-	buildAPI         build.Manager
-	signAPI          build.Manager
+	buildAPI         []build.Manager
 	daemonAPI        daemonset.DaemonSetCreator
 	kernelAPI        module.KernelMapper
 	metricsAPI       metrics.Metrics
@@ -58,8 +57,7 @@ type ModuleReconciler struct {
 
 func NewModuleReconciler(
 	client client.Client,
-	buildAPI build.Manager,
-	signAPI build.Manager,
+	buildAPI []build.Manager,
 	daemonAPI daemonset.DaemonSetCreator,
 	kernelAPI module.KernelMapper,
 	metricsAPI metrics.Metrics,
@@ -68,7 +66,6 @@ func NewModuleReconciler(
 	return &ModuleReconciler{
 		Client:           client,
 		buildAPI:         buildAPI,
-		signAPI:          signAPI,
 		daemonAPI:        daemonAPI,
 		kernelAPI:        kernelAPI,
 		metricsAPI:       metricsAPI,
@@ -121,30 +118,23 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	for kernelVersion, m := range mappings {
-		requeue, err := r.handleBuild(ctx, mod, m, kernelVersion)
-		if err != nil {
-			return res, fmt.Errorf("failed to handle build for kernel version %s: %w", kernelVersion, err)
-		}
-		if requeue {
-			logger.Info("Build requires a requeue; skipping handling driver container for now", "kernelVersion", kernelVersion, "image", m)
-			res.Requeue = true
-			continue
-		}
-
-		requeue, err = r.handleSigning(ctx, mod, m, kernelVersion)
-		if err != nil {
-			return res, fmt.Errorf("failed to handle signing for kernel version %s: %w", kernelVersion, err)
-		}
-		if requeue {
-			logger.Info("Signing requires a requeue; skipping handling driver container for now", "kernelVersion", kernelVersion, "image", m)
-			res.Requeue = true
-			continue
+		for _,api := range r.buildAPI {
+			requeue, err := r.handleJob(api, ctx, mod, m, kernelVersion)
+			if err != nil {
+				return res, fmt.Errorf("failed to handle %s for kernel version %s: %w", api.GetName(), kernelVersion, err)
+			}
+			if requeue {
+				logger.Info( api.GetName(), "Job requires a requeue; skipping handling driver container for now", "kernelVersion", kernelVersion, "image", m)
+				res.Requeue = true
+				continue
+			}
 		}
 
 		err = r.handleDriverContainer(ctx, mod, m, dsByKernelVersion, kernelVersion)
 		if err != nil {
 			return res, fmt.Errorf("failed to handle driver container for kernel version %s: %v", kernelVersion, err)
 		}
+
 	}
 
 	logger.Info("Handle device plugin")
@@ -234,11 +224,15 @@ func (r *ModuleReconciler) getNodesListBySelector(ctx context.Context, mod *ooto
 	return nodes.Items, nil
 }
 
-func (r *ModuleReconciler) handleBuild(ctx context.Context,
+
+func (r *ModuleReconciler) handleJob(manager build.Manager,
+	ctx context.Context,
 	mod *ootov1alpha1.Module,
 	km *ootov1alpha1.KernelMapping,
-	kernelVersion string) (bool, error) {
-	if mod.Spec.Build == nil && km.Build == nil {
+	kernelVersion string,
+	) (bool, error) {
+
+	if manager.ShouldRun(mod, km) == false {
 		return false, nil
 	}
 
@@ -246,7 +240,7 @@ func (r *ModuleReconciler) handleBuild(ctx context.Context,
 	logger := log.FromContext(ctx).WithValues("kernel version", kernelVersion, "image", km.ContainerImage)
 	buildCtx := log.IntoContext(ctx, logger)
 
-	buildRes, err := r.buildAPI.Sync(buildCtx, *mod, *km, kernelVersion)
+	buildRes, err := manager.Sync(buildCtx, *mod, *km, kernelVersion)
 	if err != nil {
 		return false, fmt.Errorf("could not synchronize the build: %w", err)
 	}
@@ -261,36 +255,6 @@ func (r *ModuleReconciler) handleBuild(ctx context.Context,
 	return buildRes.Requeue, nil
 }
 
-
-func (r *ModuleReconciler) handleSigning(ctx context.Context,
-	mod *ootov1alpha1.Module,
-	km *ootov1alpha1.KernelMapping,
-	kernelVersion string) (bool, error) {
-
-	//if mod.Spec.Sign == nil && km.Sign == nil {
-	if km.Sign == nil {
-		return false, nil
-	}
-
-	// [TODO] check access to the image - execute build only if needed (image is inaccessible)
-	logger := log.FromContext(ctx).WithValues("kernel version", kernelVersion, "image", km.ContainerImage)
-	buildCtx := log.IntoContext(ctx, logger)
-
-	//fmt.Printf("handleSigning %+v  == %+v\n",r,r.signAPI)
-	buildRes, err := r.signAPI.Sync(buildCtx, *mod, *km, kernelVersion)
-	if err != nil {
-		return false, fmt.Errorf("could not synchronize the build: %w", err)
-	}
-
-	switch buildRes.Status {
-	case build.StatusCreated:
-		r.metricsAPI.SetCompletedStage(mod.Name, mod.Namespace, kernelVersion, metrics.BuildStage, false)
-	case build.StatusCompleted:
-		r.metricsAPI.SetCompletedStage(mod.Name, mod.Namespace, kernelVersion, metrics.BuildStage, true)
-	}
-
-	return buildRes.Requeue, nil
-}
 
 func (r *ModuleReconciler) handleDriverContainer(ctx context.Context,
 	mod *ootov1alpha1.Module,

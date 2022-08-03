@@ -7,7 +7,7 @@ import (
 
 	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
 	"github.com/qbarrand/oot-operator/internal/auth"
-	"github.com/qbarrand/oot-operator/internal/build"
+	"github.com/qbarrand/oot-operator/internal/jobmanager"
 	"github.com/qbarrand/oot-operator/internal/constants"
 	"github.com/qbarrand/oot-operator/internal/registry"
 	batchv1 "k8s.io/api/batch/v1"
@@ -21,11 +21,11 @@ var errNoMatchingJob = errors.New("no matching job")
 type jobManager struct {
 	client   client.Client
 	registry registry.Registry
-	maker    Maker
+	maker    Job
 	helper   build.Helper
 }
 
-func NewJobManager(client client.Client, registry registry.Registry, maker Maker, helper build.Helper) *jobManager {
+func NewJobManager(client client.Client, registry registry.Registry, maker Job, helper build.Helper) *jobManager {
 	return &jobManager{
 		client:   client,
 		registry: registry,
@@ -40,6 +40,15 @@ func labels(mod ootov1alpha1.Module, targetKernel string) map[string]string {
 		constants.TargetKernelTarget: targetKernel,
 	}
 }
+
+func (jbm *jobManager) GetName() string {
+	return jbm.maker.GetName()
+}
+
+func (jbm *jobManager) ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool{
+	return jbm.maker.ShouldRun(mod, km)
+}
+
 
 func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targetKernel string) (*batchv1.Job, error) {
 	jobList := batchv1.JobList{}
