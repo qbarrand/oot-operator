@@ -5,9 +5,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
-	"github.com/qbarrand/oot-operator/internal/build"
-	"github.com/qbarrand/oot-operator/internal/constants"
+	kmmv1alpha1 "github.com/rh-ecosystem-edge/kernel-module-management/api/v1alpha1"
+	"github.com/rh-ecosystem-edge/kernel-module-management/internal/build"
+	"github.com/rh-ecosystem-edge/kernel-module-management/internal/constants"
 	"golang.org/x/exp/slices"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -41,21 +41,21 @@ var _ = Describe("MakeJob", func() {
 		ctrl.Finish()
 	})
 
-	mod := ootov1alpha1.Module{
+	mod := kmmv1alpha1.Module{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      moduleName,
 			Namespace: namespace,
 		},
 	}
 
-	buildArgs := []ootov1alpha1.BuildArg{
+	buildArgs := []kmmv1alpha1.BuildArg{
 		{Name: "name1", Value: "value1"},
 	}
 
 	DescribeTable("should set fields correctly", func(buildSecrets []v1.LocalObjectReference, imagePullSecret *v1.LocalObjectReference) {
 
-		km := ootov1alpha1.KernelMapping{
-			Build: &ootov1alpha1.Build{
+		km := kmmv1alpha1.KernelMapping{
+			Build: &kmmv1alpha1.Build{
 				BuildArgs:  buildArgs,
 				Dockerfile: dockerfile,
 			},
@@ -186,7 +186,7 @@ var _ = Describe("MakeJob", func() {
 				)
 		}
 
-		override := ootov1alpha1.BuildArg{Name: "KERNEL_VERSION", Value: kernelVersion}
+		override := kmmv1alpha1.BuildArg{Name: "KERNEL_VERSION", Value: kernelVersion}
 		mh.EXPECT().ApplyBuildArgOverrides(buildArgs, override).Return(append(slices.Clone(buildArgs), override))
 
 		actual, err := m.MakeJob(mod, km.Build, kernelVersion, km.ContainerImage)
@@ -220,17 +220,17 @@ var _ = Describe("MakeJob", func() {
 		),
 	)
 
-	DescribeTable("should set correct kaniko flags", func(b ootov1alpha1.Build, flag string) {
+	DescribeTable("should set correct kaniko flags", func(b kmmv1alpha1.Build, flag string) {
 
-		km := ootov1alpha1.KernelMapping{
-			Build: &ootov1alpha1.Build{
+		km := kmmv1alpha1.KernelMapping{
+			Build: &kmmv1alpha1.Build{
 				BuildArgs:  buildArgs,
 				Dockerfile: dockerfile,
 			},
 			ContainerImage: containerImage,
 		}
 
-		mh.EXPECT().ApplyBuildArgOverrides(nil, ootov1alpha1.BuildArg{Name: "KERNEL_VERSION", Value: kernelVersion})
+		mh.EXPECT().ApplyBuildArgOverrides(nil, kmmv1alpha1.BuildArg{Name: "KERNEL_VERSION", Value: kernelVersion})
 
 		actual, err := m.MakeJob(mod, &b, kernelVersion, km.ContainerImage)
 		Expect(err).NotTo(HaveOccurred())
@@ -239,22 +239,22 @@ var _ = Describe("MakeJob", func() {
 	},
 		Entry(
 			"PullOptions.Insecure",
-			ootov1alpha1.Build{Pull: ootov1alpha1.PullOptions{Insecure: true}},
+			kmmv1alpha1.Build{Pull: kmmv1alpha1.PullOptions{Insecure: true}},
 			"--insecure-pull",
 		),
 		Entry(
 			"PullOptions.InsecureSkipTLSVerify",
-			ootov1alpha1.Build{Pull: ootov1alpha1.PullOptions{InsecureSkipTLSVerify: true}},
+			kmmv1alpha1.Build{Pull: kmmv1alpha1.PullOptions{InsecureSkipTLSVerify: true}},
 			"--skip-tls-verify-pull",
 		),
 		Entry(
 			"PushOptions.Insecure",
-			ootov1alpha1.Build{Push: ootov1alpha1.PushOptions{Insecure: true}},
+			kmmv1alpha1.Build{Push: kmmv1alpha1.PushOptions{Insecure: true}},
 			"--insecure",
 		),
 		Entry(
 			"PushOptions.InsecureSkipTLSVerify",
-			ootov1alpha1.Build{Push: ootov1alpha1.PushOptions{InsecureSkipTLSVerify: true}},
+			kmmv1alpha1.Build{Push: kmmv1alpha1.PushOptions{InsecureSkipTLSVerify: true}},
 			"--skip-tls-verify",
 		),
 	)
