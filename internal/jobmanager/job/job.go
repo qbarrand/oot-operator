@@ -8,8 +8,9 @@ import (
 
 
 type Job interface {
-	MakeJob(mod ootov1alpha1.Module, m *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error)
+	MakeJob(mod ootov1alpha1.Module, m *ootov1alpha1.KernelMapping, targetKernel string) (*batchv1.Job, error)
 	PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOptions
 	ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool
 	GetName() string
+	GetOutputImage(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) (string,error)
 }

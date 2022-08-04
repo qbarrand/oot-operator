@@ -41,10 +41,26 @@ func (m *builder) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOp
 	return km.Build.Pull
 }
 
-func (m *builder) MakeJob(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error) {
+func (m *builder) GetOutputImage(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) (string,error) {
+        switch {
+        case km.Sign.UnsignedImage != "":
+                return km.Sign.UnsignedImage, nil
+        case km.ContainerImage != "":
+                return km.ContainerImage, nil
+        default:
+                return "",fmt.Errorf("Failed to find container image name")
+        }
+}
 
 
-	buildConfig := m.helper.GetRelevantBuild(mod, *km)
+func (m *builder) MakeJob(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMapping, targetKernel string) (*batchv1.Job, error) {
+
+        buildConfig := m.helper.GetRelevantBuild(mod, *km)
+
+        containerImage, err := m.GetOutputImage(mod,km)
+        if err != nil {
+                return nil, err
+        }
 
 	args := []string{"--destination", containerImage}
 
@@ -108,7 +124,7 @@ func (m *builder) MakeJob(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMappin
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: mod.Name + "-build-",
 			Namespace:    mod.Namespace,
-			Labels:       labels(mod, targetKernel),
+			Labels:       labels(mod, targetKernel, m.GetName()),
 		},
 		Spec: batchv1.JobSpec{
 			Completions: pointer.Int32(1),
@@ -123,6 +139,7 @@ func (m *builder) MakeJob(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMappin
 							Name:         "kaniko",
 							Image:        "gcr.io/kaniko-project/executor:latest",
 							VolumeMounts: volumeMounts,
+							SecurityContext: mod.Spec.DriverContainer.SecurityContext,
 						},
 					},
 					RestartPolicy: v1.RestartPolicyOnFailure,

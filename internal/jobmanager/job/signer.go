@@ -41,20 +41,33 @@ func (m *signer) PullOptions(km ootov1alpha1.KernelMapping) ootov1alpha1.PullOpt
 	return km.Sign.Pull
 }
 
-func (m *signer) MakeJob(mod ootov1alpha1.Module,  km *ootov1alpha1.KernelMapping, targetKernel, containerImage string) (*batchv1.Job, error) {
+func (m *signer) GetOutputImage(mod ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) (string,error) {
+        switch {
+        case km.Sign.SignedImage != "":
+                return km.Sign.SignedImage, nil
+        case km.ContainerImage != "":
+                return km.ContainerImage, nil
+        default:
+                return "",fmt.Errorf("Failed to find container image name")
+        }
+}
+
+
+func (m *signer) MakeJob(mod ootov1alpha1.Module,  km *ootov1alpha1.KernelMapping, targetKernel string) (*batchv1.Job, error) {
 	var args []string
 
 	signConfig := km.Sign
 
-	if signConfig.SignedImage != "" {
-		args = []string{"-signedimage", signConfig.SignedImage}
-	}else{
-		args = []string{"-signedimage", containerImage}
-	}
+        containerImage, err := m.GetOutputImage(mod,km)
+        if err != nil {
+                return nil, err
+        }
+
+	args = []string{"-signedimage", containerImage}
 
 	args = append(args, "-unsignedimage", signConfig.UnsignedImage)
-	args = append(args, "-pullsecret", "/docker_config/config.json") 
-	args = append(args, "-key", "/signingkey/key.priv") 
+	args = append(args, "-pullsecret", "/docker_config/config.json")
+	args = append(args, "-key", "/signingkey/key.priv")
 	args = append(args, "-cert", "/signingcert/public.der")
 	args = append(args, "-filestosign", strings.Join(signConfig.FilesToSign, ":"))
 
@@ -78,7 +91,7 @@ func (m *signer) MakeJob(mod ootov1alpha1.Module,  km *ootov1alpha1.KernelMappin
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: mod.Name + "-sign-",
 			Namespace:    mod.Namespace,
-			Labels:       labels(mod, targetKernel),
+			Labels:       labels(mod, targetKernel, m.GetName()),
 		},
 		Spec: batchv1.JobSpec{
 			Completions: pointer.Int32(1),
@@ -91,7 +104,7 @@ func (m *signer) MakeJob(mod ootov1alpha1.Module,  km *ootov1alpha1.KernelMappin
 						{
 							Name:         "signimage",
 							Image:        "quay.io/chrisp262/kmod-signer:latest",
-							Args:         args,	
+							Args:         args,
 							VolumeMounts: volumeMounts,
 						},
 					},

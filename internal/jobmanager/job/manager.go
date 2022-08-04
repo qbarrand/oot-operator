@@ -34,10 +34,11 @@ func NewJobManager(client client.Client, registry registry.Registry, maker Job, 
 	}
 }
 
-func labels(mod ootov1alpha1.Module, targetKernel string) map[string]string {
+func labels(mod ootov1alpha1.Module, targetKernel string, jobname string) map[string]string {
 	return map[string]string{
 		constants.ModuleNameLabel:    mod.Name,
 		constants.TargetKernelTarget: targetKernel,
+		"ooto.sigs.k8s.io/build-stage": jobname,
 	}
 }
 
@@ -54,7 +55,7 @@ func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targ
 	jobList := batchv1.JobList{}
 
 	opts := []client.ListOption{
-		client.MatchingLabels(labels(mod, targetKernel)),
+		client.MatchingLabels(labels(mod, targetKernel, jbm.GetName())),
 		client.InNamespace(mod.Namespace),
 	}
 
@@ -83,11 +84,16 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 		}
 		registryAuthGetter = auth.NewRegistryAuthGetter(jbm.client, namespacedName)
 	}
-	logger.Info("try to pull image", m.ContainerImage)
-	//imageAvailable, err := jbm.registry.ImageExists(ctx, m.ContainerImage, buildConfig.Pull, registryAuthGetter)
+
+	containerimage, err := jbm.maker.GetOutputImage(mod, &m)
+        if err != nil {
+                return build.Result{}, err
+        }
+
 	pulloptions := jbm.maker.PullOptions(m)
 
-	imageAvailable, err := jbm.registry.ImageExists(ctx, m.ContainerImage, pulloptions, registryAuthGetter)
+	logger.Info("try to pull image", "img", containerimage, "for job", jbm.GetName() )
+	imageAvailable, err := jbm.registry.ImageExists(ctx, containerimage, pulloptions, registryAuthGetter)
 	if err != nil {
 		return build.Result{}, fmt.Errorf("could not check if the image is available: %v", err)
 	}
@@ -107,7 +113,7 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 		logger.Info("Creating job")
 
 		//job, err = jbm.maker.MakeJob(mod, buildConfig, targetKernel, m.ContainerImage)
-		job, err = jbm.maker.MakeJob(mod, &m, targetKernel, m.ContainerImage)
+		job, err = jbm.maker.MakeJob(mod, &m, targetKernel)
 		if err != nil {
 			return build.Result{}, fmt.Errorf("could not make Job: %v", err)
 		}

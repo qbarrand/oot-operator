@@ -117,16 +117,18 @@ func (r *ModuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return res, fmt.Errorf("could get DaemonSets for module %s: %v", mod.Name, err)
 	}
 
+	OUTER:
 	for kernelVersion, m := range mappings {
 		for _,api := range r.buildAPI {
+			logger.Info( "handling job", "Job", api.GetName(), "kernelVersion", kernelVersion, "image", m)
 			requeue, err := r.handleJob(api, ctx, mod, m, kernelVersion)
 			if err != nil {
 				return res, fmt.Errorf("failed to handle %s for kernel version %s: %w", api.GetName(), kernelVersion, err)
 			}
 			if requeue {
-				logger.Info( api.GetName(), "Job requires a requeue; skipping handling driver container for now", "kernelVersion", kernelVersion, "image", m)
+				logger.Info( "Job requires a requeue; skipping handling driver container for now", "Job", api.GetName(), "kernelVersion", kernelVersion, "image", m)
 				res.Requeue = true
-				continue
+				continue OUTER
 			}
 		}
 
