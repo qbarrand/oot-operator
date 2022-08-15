@@ -23,8 +23,8 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/qbarrand/oot-operator/internal/build"
-	"github.com/qbarrand/oot-operator/internal/build/job"
+	"github.com/qbarrand/oot-operator/internal/jobmanager"
+	"github.com/qbarrand/oot-operator/internal/jobmanager/job"
 	"github.com/qbarrand/oot-operator/internal/daemonset"
 	"github.com/qbarrand/oot-operator/internal/filter"
 	"github.com/qbarrand/oot-operator/internal/metrics"
@@ -153,8 +153,15 @@ func main() {
 	metricsAPI.Register()
 	registryAPI := registry.NewRegistry()
 	helperAPI := build.NewHelper()
-	makerAPI := job.NewMaker(helperAPI, scheme)
-	buildAPI := job.NewBuildManager(client, registryAPI, makerAPI, helperAPI)
+
+
+	buildAPI := make([]build.Manager, 2)
+
+	makerAPI := job.NewBuilder(helperAPI, scheme)
+	signerAPI := job.NewSigner(helperAPI, scheme)
+	buildAPI[0] = job.NewJobManager(client, registryAPI, makerAPI, helperAPI)
+	buildAPI[1] = job.NewJobManager(client, registryAPI, signerAPI, helperAPI)
+
 	daemonAPI := daemonset.NewCreator(client, kernelLabel, scheme)
 	kernelAPI := module.NewKernelMapper()
 	moduleStatusUpdaterAPI := statusupdater.NewModuleStatusUpdater(client, daemonAPI, metricsAPI)

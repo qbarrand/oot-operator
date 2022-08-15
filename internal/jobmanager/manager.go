@@ -23,4 +23,6 @@ type Result struct {
 
 type Manager interface {
 	Sync(ctx context.Context, mod ootov1alpha1.Module, m ootov1alpha1.KernelMapping, targetKernel string) (Result, error)
+	ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool
+	GetName() string
 }

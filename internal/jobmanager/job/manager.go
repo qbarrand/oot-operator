@@ -7,7 +7,7 @@ import (
 
 	ootov1alpha1 "github.com/qbarrand/oot-operator/api/v1alpha1"
 	"github.com/qbarrand/oot-operator/internal/auth"
-	"github.com/qbarrand/oot-operator/internal/build"
+	"github.com/qbarrand/oot-operator/internal/jobmanager"
 	"github.com/qbarrand/oot-operator/internal/constants"
 	"github.com/qbarrand/oot-operator/internal/registry"
 	batchv1 "k8s.io/api/batch/v1"
@@ -16,16 +16,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var errNoMatchingBuild = errors.New("no matching build")
+var errNoMatchingJob = errors.New("no matching job")
 
 type jobManager struct {
 	client   client.Client
 	registry registry.Registry
-	maker    Maker
+	maker    Job
 	helper   build.Helper
 }
 
-func NewBuildManager(client client.Client, registry registry.Registry, maker Maker, helper build.Helper) *jobManager {
+func NewJobManager(client client.Client, registry registry.Registry, maker Job, helper build.Helper) *jobManager {
 	return &jobManager{
 		client:   client,
 		registry: registry,
@@ -34,18 +34,28 @@ func NewBuildManager(client client.Client, registry registry.Registry, maker Mak
 	}
 }
 
-func labels(mod ootov1alpha1.Module, targetKernel string) map[string]string {
+func labels(mod ootov1alpha1.Module, targetKernel string, jobname string) map[string]string {
 	return map[string]string{
 		constants.ModuleNameLabel:    mod.Name,
 		constants.TargetKernelTarget: targetKernel,
+		"ooto.sigs.k8s.io/build-stage": jobname,
 	}
 }
+
+func (jbm *jobManager) GetName() string {
+	return jbm.maker.GetName()
+}
+
+func (jbm *jobManager) ShouldRun(mod *ootov1alpha1.Module, km *ootov1alpha1.KernelMapping) bool{
+	return jbm.maker.ShouldRun(mod, km)
+}
+
 
 func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targetKernel string) (*batchv1.Job, error) {
 	jobList := batchv1.JobList{}
 
 	opts := []client.ListOption{
-		client.MatchingLabels(labels(mod, targetKernel)),
+		client.MatchingLabels(labels(mod, targetKernel, jbm.GetName())),
 		client.InNamespace(mod.Namespace),
 	}
 
@@ -54,7 +64,7 @@ func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targ
 	}
 
 	if n := len(jobList.Items); n == 0 {
-		return nil, errNoMatchingBuild
+		return nil, errNoMatchingJob
 	} else if n > 1 {
 		return nil, fmt.Errorf("expected 0 or 1 job, got %d", n)
 	}
@@ -65,8 +75,6 @@ func (jbm *jobManager) getJob(ctx context.Context, mod ootov1alpha1.Module, targ
 func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ootov1alpha1.KernelMapping, targetKernel string) (build.Result, error) {
 	logger := log.FromContext(ctx)
 
-	buildConfig := jbm.helper.GetRelevantBuild(mod, m)
-
 	var registryAuthGetter auth.RegistryAuthGetter
 
 	if mod.Spec.ImagePullSecret != nil {
@@ -76,7 +84,16 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 		}
 		registryAuthGetter = auth.NewRegistryAuthGetter(jbm.client, namespacedName)
 	}
-	imageAvailable, err := jbm.registry.ImageExists(ctx, m.ContainerImage, buildConfig.Pull, registryAuthGetter)
+
+	containerimage, err := jbm.maker.GetOutputImage(mod, &m)
+        if err != nil {
+                return build.Result{}, err
+        }
+
+	pulloptions := jbm.maker.PullOptions(m)
+
+	logger.Info("try to pull image", "img", containerimage, "for job", jbm.GetName() )
+	imageAvailable, err := jbm.registry.ImageExists(ctx, containerimage, pulloptions, registryAuthGetter)
 	if err != nil {
 		return build.Result{}, fmt.Errorf("could not check if the image is available: %v", err)
 	}
@@ -89,13 +106,14 @@ func (jbm *jobManager) Sync(ctx context.Context, mod ootov1alpha1.Module, m ooto
 
 	job, err := jbm.getJob(ctx, mod, targetKernel)
 	if err != nil {
-		if !errors.Is(err, errNoMatchingBuild) {
-			return build.Result{}, fmt.Errorf("error getting the build: %v", err)
+		if !errors.Is(err, errNoMatchingJob) {
+			return build.Result{}, fmt.Errorf("error getting the job: %v", err)
 		}
 
 		logger.Info("Creating job")
 
-		job, err = jbm.maker.MakeJob(mod, buildConfig, targetKernel, m.ContainerImage)
+		//job, err = jbm.maker.MakeJob(mod, buildConfig, targetKernel, m.ContainerImage)
+		job, err = jbm.maker.MakeJob(mod, &m, targetKernel)
 		if err != nil {
 			return build.Result{}, fmt.Errorf("could not make Job: %v", err)
 		}
