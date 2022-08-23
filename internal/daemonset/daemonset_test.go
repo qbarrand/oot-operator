@@ -3,6 +3,7 @@ package daemonset
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
@@ -800,7 +801,11 @@ var _ = Describe("MakeLoadCommand", func() {
 		Expect(
 			MakeLoadCommand(spec),
 		).To(
-			Equal([]string{"modprobe", "load", "arguments"}),
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				"modprobe load arguments",
+			}),
 		)
 	})
 
@@ -820,7 +825,11 @@ var _ = Describe("MakeLoadCommand", func() {
 		Expect(
 			MakeLoadCommand(spec),
 		).To(
-			Equal([]string{"modprobe", "-v", "-d", dir, moduleName, arg1, arg2}),
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				fmt.Sprintf("modprobe -d %s -v %s %s %s", dir, moduleName, arg1, arg2),
+			}),
 		)
 	})
 
@@ -835,7 +844,28 @@ var _ = Describe("MakeLoadCommand", func() {
 		Expect(
 			MakeLoadCommand(spec),
 		).To(
-			Equal([]string{"modprobe", "-z", "-k", moduleName}),
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				fmt.Sprintf("modprobe -z -k %s", moduleName),
+			}),
+		)
+	})
+
+	It("should use the firmware path if provided", func() {
+		spec := kmmv1beta1.ModprobeSpec{
+			FirmwarePath: "/kmm/firmware/mymodule",
+			ModuleName: moduleName,
+		}
+
+		Expect(
+			MakeLoadCommand(spec),
+		).To(
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				fmt.Sprintf("cp -r /kmm/firmware/mymodule /var/lib/firmware && modprobe -v %s", moduleName),
+			}),
 		)
 	})
 })
@@ -854,7 +884,11 @@ var _ = Describe("MakeUnloadCommand", func() {
 		Expect(
 			MakeUnloadCommand(spec),
 		).To(
-			Equal([]string{"modprobe", "unload", "arguments"}),
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				"modprobe unload arguments",
+			}),
 		)
 	})
 
@@ -869,7 +903,11 @@ var _ = Describe("MakeUnloadCommand", func() {
 		Expect(
 			MakeUnloadCommand(spec),
 		).To(
-			Equal([]string{"modprobe", "-rv", "-d", dir, moduleName}),
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				fmt.Sprintf("modprobe -d %s -rv %s", dir, moduleName),
+			}),
 		)
 	})
 
@@ -884,7 +922,28 @@ var _ = Describe("MakeUnloadCommand", func() {
 		Expect(
 			MakeUnloadCommand(spec),
 		).To(
-			Equal([]string{"modprobe", "-z", "-k", moduleName}),
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				fmt.Sprintf("modprobe -z -k %s", moduleName),
+			}),
+		)
+	})
+
+	It("should use the firmware path if provided", func() {
+		spec := kmmv1beta1.ModprobeSpec{
+			FirmwarePath: "/kmm/firmware/mymodule",
+			ModuleName: moduleName,
+		}
+
+		Expect(
+			MakeUnloadCommand(spec),
+		).To(
+			Equal([]string{
+				"/bin/sh",
+				"-c",
+				fmt.Sprintf("modprobe -rv %s && rm -rf /var/lib/firmware/mymodule", moduleName),
+			}),
 		)
 	})
 })
