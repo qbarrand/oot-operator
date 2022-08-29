@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"strings"
 
 	kmmv1beta1 "github.com/qbarrand/oot-operator/api/v1beta1"
 	"github.com/qbarrand/oot-operator/internal/constants"
@@ -25,6 +27,8 @@ const (
 	nodeUsrLibModulesPath          = "/usr/lib/modules"
 	nodeUsrLibModulesVolumeName    = "node-usr-lib-modules"
 	devicePluginKernelVersion      = ""
+	nodeVarLibFirmwarePath         = "/var/lib/firmware"
+	nodeVarLibFirmwareVolumeName   = "node-var-lib-firmware"
 )
 
 //go:generate mockgen -source=daemonset.go -package=daemonset -destination=mock_daemonset.go
@@ -116,6 +120,7 @@ func (dc *daemonSetGenerator) SetDriverContainerAsDesired(ctx context.Context, d
 	nodeSelector[dc.kernelLabel] = kernelVersion
 
 	hostPathDirectory := v1.HostPathDirectory
+	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
 
 	ds.Spec = appsv1.DaemonSetSpec{
 		Template: v1.PodTemplateSpec{
@@ -193,6 +198,25 @@ func (dc *daemonSetGenerator) SetDriverContainerAsDesired(ctx context.Context, d
 			},
 		},
 		Selector: &metav1.LabelSelector{MatchLabels: standardLabels},
+	}
+
+	if fw := mod.Spec.ModuleLoader.Container.Modprobe.FirmwarePath; fw != "" {
+		firmwareVolume := v1.Volume{
+			Name: nodeVarLibFirmwareVolumeName,
+			VolumeSource: v1.VolumeSource{
+				HostPath: &v1.HostPathVolumeSource{
+					Path: nodeVarLibFirmwarePath,
+					Type: &hostPathDirectoryOrCreate,
+				},
+			},
+		}
+		ds.Spec.Template.Spec.Volumes = append(ds.Spec.Template.Spec.Volumes, firmwareVolume)
+
+		firmwareVolumeMount := v1.VolumeMount{
+			Name:      nodeVarLibFirmwareVolumeName,
+			MountPath: nodeVarLibFirmwarePath,
+		}
+		ds.Spec.Template.Spec.Containers[0].VolumeMounts = append(ds.Spec.Template.Spec.Containers[0].VolumeMounts, firmwareVolumeMount)
 	}
 
 	return controllerutil.SetControllerReference(&mod, ds, dc.scheme)
@@ -340,42 +364,69 @@ func OverrideLabels(labels, overrides map[string]string) map[string]string {
 }
 
 func MakeLoadCommand(spec kmmv1beta1.ModprobeSpec) []string {
-	loadCommand := []string{"modprobe"}
+	loadCommandShell := []string{
+		"/bin/sh",
+		"-c",
+	}
+
+	loadCommand := "modprobe"
 
 	if ra := spec.RawArgs; ra != nil && len(ra.Load) > 0 {
-		return append(loadCommand, ra.Load...)
+		loadCommand = fmt.Sprintf("%s %s", loadCommand, strings.Join(ra.Load[:], " "))
+		return append(loadCommandShell, loadCommand)
+	}
+
+	if fw := spec.FirmwarePath; fw != "" {
+		loadCommand = fmt.Sprintf("cp -r %s %s && %s", fw, nodeVarLibFirmwarePath, loadCommand)
+	}
+
+	if dirName := spec.DirName; dirName != "" {
+		loadCommand = fmt.Sprintf("%s -d %s", loadCommand, dirName)
 	}
 
 	if a := spec.Args; a != nil && len(a.Load) > 0 {
-		loadCommand = append(loadCommand, a.Load...)
+		loadCommand = fmt.Sprintf("%s %s", loadCommand, strings.Join(a.Load[:], " "))
 	} else {
-		loadCommand = append(loadCommand, "-v")
+		loadCommand = fmt.Sprintf("%s -v", loadCommand)
 	}
 
-	if dirName := spec.DirName; dirName != "" {
-		loadCommand = append(loadCommand, "-d", dirName)
+	loadCommand = fmt.Sprintf("%s %s", loadCommand, spec.ModuleName)
+
+	if p := spec.Parameters; len(p) > 0 {
+		loadCommand = fmt.Sprintf("%s %s", loadCommand, strings.Join(spec.Parameters[:], " "))
 	}
 
-	loadCommand = append(loadCommand, spec.ModuleName)
-	return append(loadCommand, spec.Parameters...)
+	return append(loadCommandShell, loadCommand)
 }
 
 func MakeUnloadCommand(spec kmmv1beta1.ModprobeSpec) []string {
-	unloadCommand := []string{"modprobe"}
-
-	if ra := spec.RawArgs; ra != nil && len(ra.Unload) > 0 {
-		return append(unloadCommand, ra.Unload...)
+	unloadCommandShell := []string{
+		"/bin/sh",
+		"-c",
 	}
 
-	if a := spec.Args; a != nil && len(a.Unload) > 0 {
-		unloadCommand = append(unloadCommand, a.Unload...)
-	} else {
-		unloadCommand = append(unloadCommand, "-rv")
+	unloadCommand := "modprobe"
+
+	if ra := spec.RawArgs; ra != nil && len(ra.Unload) > 0 {
+		unloadCommand = fmt.Sprintf("%s %s", unloadCommand, strings.Join(ra.Unload[:], " "))
+		return append(unloadCommandShell, unloadCommand)
 	}
 
 	if dirName := spec.DirName; dirName != "" {
-		unloadCommand = append(unloadCommand, "-d", dirName)
+		unloadCommand = fmt.Sprintf("%s -d %s", unloadCommand, dirName)
 	}
 
-	return append(unloadCommand, spec.ModuleName)
+	if a := spec.Args; a != nil && len(a.Unload) > 0 {
+		unloadCommand = fmt.Sprintf("%s %s", unloadCommand, strings.Join(a.Unload[:], " "))
+	} else {
+		unloadCommand = fmt.Sprintf("%s -rv", unloadCommand)
+	}
+
+	unloadCommand = fmt.Sprintf("%s %s", unloadCommand, spec.ModuleName)
+
+	if fw := spec.FirmwarePath; fw != "" {
+		unloadCommand = fmt.Sprintf("%s && rm -rf %s/%s", unloadCommand, nodeVarLibFirmwarePath, path.Base(fw))
+	}
+
+	return append(unloadCommandShell, unloadCommand)
 }
